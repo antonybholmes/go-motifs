@@ -15,5 +15,5 @@ func TestGenes(t *testing.T) {
 		fmt.Printf("%s", err)
 	}
 
-	fmt.Printf("%v %v", gene.Databases, gene.Genes)
+	fmt.Printf("%v %v", gene.Sources, gene.Genes)
 }
