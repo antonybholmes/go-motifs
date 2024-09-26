@@ -1,4 +1,4 @@
-package motiftogene
+package motifs
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 
 func TestGenes(t *testing.T) {
 
-	db := NewMotifToGeneDB("data/modules/motiftogene/motiftogene.json")
+	db := NewMotifDB("data/modules/motiftogene/motiftogene.json")
 
 	gene, err := db.Convert("ADNP_IRX_SIX_ZHX.p2")
 
@@ -15,5 +15,5 @@ func TestGenes(t *testing.T) {
 		fmt.Printf("%s", err)
 	}
 
-	fmt.Printf("%v %v", gene.Sources, gene.Genes)
+	fmt.Printf("%v %v", gene.Dataset, gene.Genes)
 }

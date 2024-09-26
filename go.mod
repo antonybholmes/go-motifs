@@ -1,4 +1,4 @@
-module github.com/antonybholmes/go-motiftogene
+module github.com/antonybholmes/go-motifs
 
 go 1.23
 
