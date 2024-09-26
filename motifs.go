@@ -4,12 +4,16 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
+	"slices"
 	"strings"
 
 	"github.com/antonybholmes/go-sys"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Motif struct {
+	PublicId  string      `json:"publicId"`
 	Dataset   string      `json:"dataset"`
 	MotifId   string      `json:"motifId"`
 	MotifName string      `json:"motifName"`
@@ -20,8 +24,8 @@ type Motif struct {
 type MotifToGeneMap map[string]Motif
 
 type MotifDB struct {
+	db   *sql.DB
 	file string
-	db   *sql.DB //MotifToGeneMap
 }
 
 func NewMotifDB(file string) *MotifDB {
@@ -40,30 +44,55 @@ func NewMotifDB(file string) *MotifDB {
 	return &MotifDB{file: file, db: sys.Must(sql.Open("sqlite3", file))}
 }
 
-func (motiftogenedb *MotifDB) Convert(search string) (*Motif, error) {
+func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]*Motif, error) {
 
-	var ret Motif
+	var ret []*Motif = make([]*Motif, 0, 20)
 
 	var genes string
 	var weights string
 
 	//log.Debug().Msgf("motif %s", search)
 
-	err := motiftogenedb.db.QueryRow("SELECT dataset, motif_id, motif_name, genes FROM motifs WHERE motif LIKE ?1",
-		fmt.Sprintf("%%%s%%", search)).Scan(&ret.Dataset,
-		&ret.MotifId,
-		&ret.MotifName,
-		&genes,
-		&weights)
+	rows, err := motifdb.db.Query("SELECT public_id, dataset, motif_id, motif_name, genes, weights FROM motifs WHERE motif_id LIKE ?1 OR motif_name LIKE ?1",
+		fmt.Sprintf("%%%s%%", search))
 
 	if err != nil {
-		//log.Debug().Msgf("motif %s", err)
-		return nil, err
+		log.Fatal(err)
 	}
 
-	ret.Genes = strings.Split(genes, ",")
+	defer rows.Close()
 
-	json.Unmarshal([]byte(weights), &ret.Weights)
+	for rows.Next() {
+		var motif Motif
+
+		err := rows.Scan(&motif.PublicId,
+			&motif.Dataset,
+			&motif.MotifId,
+			&motif.MotifName,
+			&genes,
+			&weights)
+
+		if err != nil {
+			//log.Debug().Msgf("motif %s", err)
+			return nil, err
+		}
+
+		motif.Genes = strings.Split(genes, ",")
+
+		json.Unmarshal([]byte(weights), &motif.Weights)
+
+		if reverse {
+			slices.Reverse(motif.Weights)
+		}
+
+		if complement {
+			for _, pw := range motif.Weights {
+				slices.Reverse(pw)
+			}
+		}
+
+		ret = append(ret, &motif)
+	}
 
 	// ret.Databases = strings.Split(sources, "|")
 	// ret.Genes = strings.Split(genes, "|")
@@ -79,6 +108,6 @@ func (motiftogenedb *MotifDB) Convert(search string) (*Motif, error) {
 	// 	return nil, fmt.Errorf("%s does not exist", search)
 	// }
 
-	return &ret, nil
+	return ret, nil
 
 }

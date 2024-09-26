@@ -21,6 +21,6 @@ func GetInstance() *motifs.MotifDB {
 	return instance
 }
 
-func Convert(search string) (*motifs.Motif, error) {
-	return instance.Convert(search)
+func Search(search string, reverse bool, complement bool) ([]*motifs.Motif, error) {
+	return instance.Search(search, reverse, complement)
 }

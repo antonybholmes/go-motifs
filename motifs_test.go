@@ -7,13 +7,16 @@ import (
 
 func TestGenes(t *testing.T) {
 
-	db := NewMotifDB("data/modules/motiftogene/motiftogene.json")
+	db := NewMotifDB("../data/modules/motifs/motifs.db")
 
-	gene, err := db.Convert("ADNP_IRX_SIX_ZHX.p2")
+	motifs, err := db.Search("ADNP_IRX_SIX_ZHX.p2")
 
 	if err != nil {
 		fmt.Printf("%s", err)
 	}
 
-	fmt.Printf("%v %v", gene.Dataset, gene.Genes)
+	for _, motif := range motifs {
+		fmt.Printf("%v %v %v", motif.Dataset, motif.Genes, motif.Weights)
+	}
+
 }
