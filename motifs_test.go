@@ -9,7 +9,7 @@ func TestGenes(t *testing.T) {
 
 	db := NewMotifDB("../data/modules/motifs/motifs.db")
 
-	motifs, err := db.Search("ADNP_IRX_SIX_ZHX.p2")
+	motifs, err := db.Search("ADNP_IRX_SIX_ZHX.p2", false, false)
 
 	if err != nil {
 		fmt.Printf("%s", err)
