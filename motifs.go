@@ -12,6 +12,9 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+const DATASETS_SQL = "SELECT DISTINCT motifs.dataset FROM motifs ORDER BY motifs.dataset"
+const SEARCH_SQL = "SELECT motifs.public_id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights FROM motifs WHERE motif_id LIKE ?1 OR motif_name LIKE ?1"
+
 type Motif struct {
 	PublicId  string      `json:"publicId"`
 	Dataset   string      `json:"dataset"`
@@ -44,6 +47,37 @@ func NewMotifDB(file string) *MotifDB {
 	return &MotifDB{file: file, db: sys.Must(sql.Open("sqlite3", file))}
 }
 
+func (motifdb *MotifDB) Datasets() ([]string, error) {
+
+	var ret []string = make([]string, 0, 10)
+
+	var dataset string
+
+	//log.Debug().Msgf("motif %s", search)
+
+	rows, err := motifdb.db.Query(DATASETS_SQL)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer rows.Close()
+
+	for rows.Next() {
+
+		err := rows.Scan(&dataset)
+
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, dataset)
+	}
+
+	return ret, nil
+
+}
+
 func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]*Motif, error) {
 
 	var ret []*Motif = make([]*Motif, 0, 20)
@@ -53,7 +87,7 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 
 	//log.Debug().Msgf("motif %s", search)
 
-	rows, err := motifdb.db.Query("SELECT public_id, dataset, motif_id, motif_name, genes, weights FROM motifs WHERE motif_id LIKE ?1 OR motif_name LIKE ?1",
+	rows, err := motifdb.db.Query(SEARCH_SQL,
 		fmt.Sprintf("%%%s%%", search))
 
 	if err != nil {
