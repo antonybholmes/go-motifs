@@ -250,6 +250,6 @@ with open(os.path.join(dir, "motifs.sql"), "w") as f:
     for row in data:
         publicId = generate("0123456789abcdefghijklmnopqrstuvwxyz", 12)
         print(
-            f"INSERT INTO motifs (public_id, dataset, motif_id, motif_name, genes, size, weights) VALUES ('{publicId}', '{row[0]}','{row[1]}', '{row[2]}', '{'|'.join(row[3])}', {row[4]}, '{json.dumps(row[5])}');",
+            f"INSERT INTO motifs (public_id, dataset, motif_id, motif_name, genes, size, weights) VALUES ('{publicId}', '{row[0]}','{row[1]}', '{row[2]}', '{','.join(row[3])}', {row[4]}, '{json.dumps(row[5])}');",
             file=f,
         )
