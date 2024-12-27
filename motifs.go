@@ -58,7 +58,7 @@ func (motifdb *MotifDB) Datasets() ([]string, error) {
 	rows, err := motifdb.db.Query(DATASETS_SQL)
 
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	defer rows.Close()
