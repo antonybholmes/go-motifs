@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"log"
 	"slices"
 	"strings"
 
@@ -91,7 +90,7 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 		fmt.Sprintf("%%%s%%", search))
 
 	if err != nil {
-		log.Fatal(err)
+		// return nil, err
 	}
 
 	defer rows.Close()
