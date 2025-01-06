@@ -15,7 +15,7 @@ const DATASETS_SQL = "SELECT DISTINCT motifs.dataset FROM motifs ORDER BY motifs
 const SEARCH_SQL = "SELECT motifs.public_id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights FROM motifs WHERE motif_id LIKE ?1 OR motif_name LIKE ?1"
 
 type Motif struct {
-	PublicId  string      `json:"publicId"`
+	Uuid      string      `json:"uuid"`
 	Dataset   string      `json:"dataset"`
 	MotifId   string      `json:"motifId"`
 	MotifName string      `json:"motifName"`
@@ -98,7 +98,7 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 	for rows.Next() {
 		var motif Motif
 
-		err := rows.Scan(&motif.PublicId,
+		err := rows.Scan(&motif.Uuid,
 			&motif.Dataset,
 			&motif.MotifId,
 			&motif.MotifName,
