@@ -4,12 +4,12 @@ go 1.23
 
 replace github.com/antonybholmes/go-sys => ../go-sys
 
-require github.com/antonybholmes/go-sys v0.0.0-20250106231244-0d0c227dc641
+require github.com/antonybholmes/go-sys v0.0.0-20250108011046-3565a1fbce78
 
 require github.com/mattn/go-sqlite3 v1.14.24
 
 require (
-	github.com/mattn/go-colorable v0.1.13 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/richardlehane/mscfb v1.0.4 // indirect
