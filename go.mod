@@ -1,6 +1,6 @@
 module github.com/antonybholmes/go-motifs
 
-go 1.24
+go 1.23
 
 replace github.com/antonybholmes/go-sys => ../go-sys
 
