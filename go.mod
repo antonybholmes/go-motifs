@@ -6,9 +6,9 @@ toolchain go1.24.0
 
 replace github.com/antonybholmes/go-sys => ../go-sys
 
-require github.com/antonybholmes/go-sys v0.0.0-20250307171544-adff7a5ac327
+require github.com/antonybholmes/go-sys v0.0.0-20250326211431-bdf1f86a7b8b
 
-require github.com/mattn/go-sqlite3 v1.14.24
+require github.com/mattn/go-sqlite3 v1.14.27
 
 require (
 	github.com/google/uuid v1.6.0 // indirect
@@ -23,7 +23,7 @@ require (
 	github.com/xuri/excelize/v2 v2.9.0 // indirect
 	github.com/xuri/nfp v0.0.0-20250226145837-86d5fc24b2ba // indirect
 	golang.org/x/crypto v0.36.0 // indirect
-	golang.org/x/net v0.37.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sys v0.32.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )
