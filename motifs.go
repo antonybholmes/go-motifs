@@ -12,10 +12,14 @@ import (
 )
 
 const DATASETS_SQL = "SELECT DISTINCT motifs.dataset FROM motifs ORDER BY motifs.dataset"
-const SEARCH_SQL = "SELECT motifs.public_id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights FROM motifs WHERE motif_id LIKE ?1 OR motif_name LIKE ?1"
+
+const SEARCH_SQL = `SELECT 
+	motifs.public_id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights 
+	FROM motifs 
+	WHERE motifs.motif_id LIKE ?1 OR motifs.motif_name LIKE ?1 OR motifs.public_id LIKE ?1`
 
 type Motif struct {
-	Uuid      string      `json:"uuid"`
+	PublicId  string      `json:"publicId"`
 	Dataset   string      `json:"dataset"`
 	MotifId   string      `json:"motifId"`
 	MotifName string      `json:"motifName"`
@@ -98,7 +102,7 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 	for rows.Next() {
 		var motif Motif
 
-		err := rows.Scan(&motif.Uuid,
+		err := rows.Scan(&motif.PublicId,
 			&motif.Dataset,
 			&motif.MotifId,
 			&motif.MotifName,
@@ -112,6 +116,8 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 
 		motif.Genes = strings.Split(genes, ",")
 
+		// weight are stored as a string of floats in database
+		// which we can parse as json
 		json.Unmarshal([]byte(weights), &motif.Weights)
 
 		if reverse {
