@@ -6,7 +6,7 @@ toolchain go1.24.0
 
 replace github.com/antonybholmes/go-sys => ../go-sys
 
-require github.com/antonybholmes/go-sys v0.0.0-20250512211932-464c953347d7
+require github.com/antonybholmes/go-sys v0.0.0-20250530200903-de9311aa2093
 
 require github.com/mattn/go-sqlite3 v1.14.28
 
