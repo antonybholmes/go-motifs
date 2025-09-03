@@ -6,7 +6,7 @@ replace github.com/antonybholmes/go-sys => ../go-sys
 
 require github.com/antonybholmes/go-sys v0.0.0-20250812213435-bed670f8992a
 
-require github.com/mattn/go-sqlite3 v1.14.31
+require github.com/mattn/go-sqlite3 v1.14.32
 
 require (
 	github.com/google/uuid v1.6.0 // indirect
