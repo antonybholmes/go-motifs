@@ -6,8 +6,10 @@ import (
 	"github.com/antonybholmes/go-motifs"
 )
 
-var instance *motifs.MotifDB
-var once sync.Once
+var (
+	instance *motifs.MotifDB
+	once     sync.Once
+)
 
 func InitCache(file string) *motifs.MotifDB {
 	once.Do(func() {
