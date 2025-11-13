@@ -4,7 +4,7 @@ go 1.25
 
 replace github.com/antonybholmes/go-sys => ../go-sys
 
-require github.com/antonybholmes/go-sys v0.0.0-20251112171528-41b7859942bb
+require github.com/antonybholmes/go-sys v0.0.0-20251113170509-8987daf9a00a
 
 require github.com/mattn/go-sqlite3 v1.14.32
 
@@ -24,4 +24,5 @@ require (
 	golang.org/x/net v0.47.0 // indirect
 	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.31.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 )
