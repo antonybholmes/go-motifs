@@ -14,12 +14,12 @@ import (
 const DATASETS_SQL = "SELECT DISTINCT motifs.dataset FROM motifs ORDER BY motifs.dataset"
 
 const SEARCH_SQL = `SELECT 
-	motifs.public_id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights 
+	motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights 
 	FROM motifs 
-	WHERE motifs.motif_id LIKE ?1 OR motifs.motif_name LIKE ?1 OR motifs.public_id LIKE ?1`
+	WHERE motifs.motif_id LIKE ?1 OR motifs.motif_name LIKE ?1 OR motifs.id = ?1`
 
 type Motif struct {
-	PublicId  string      `json:"publicId"`
+	Id        string      `json:"id"`
 	Dataset   string      `json:"dataset"`
 	MotifId   string      `json:"motifId"`
 	MotifName string      `json:"motifName"`
@@ -102,7 +102,7 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 	for rows.Next() {
 		var motif Motif
 
-		err := rows.Scan(&motif.PublicId,
+		err := rows.Scan(&motif.Id,
 			&motif.Dataset,
 			&motif.MotifId,
 			&motif.MotifName,

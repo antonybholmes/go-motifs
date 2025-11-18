@@ -3,6 +3,7 @@ import json
 import os
 import re
 from nanoid import generate
+import uuid_utils as uuid
 import pandas as pd
 
 
@@ -32,7 +33,7 @@ with open("meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
 
             db[id]["JASPAR2022_CORE_redundant_v2"].update(genes)
             db[name]["JASPAR2022_CORE_redundant_v2"].update(genes)
-            
+
             row = ["JASPAR2022_CORE_redundant_v2", id, name, list(sorted(genes)), 0, []]
 
         if line.startswith("letter-probability"):
@@ -248,8 +249,10 @@ with open("meme/H12CORE_meme_format.meme", "r") as f:
 
 with open(os.path.join(dir, "motifs.sql"), "w") as f:
     for row in data:
-        publicId = generate("0123456789abcdefghijklmnopqrstuvwxyz", 12)
+        # publicId = generate("0123456789abcdefghijklmnopqrstuvwxyz", 12)
+        id = uuid.uuid7()
+
         print(
-            f"INSERT INTO motifs (public_id, dataset, motif_id, motif_name, genes, size, weights) VALUES ('{publicId}', '{row[0]}','{row[1]}', '{row[2]}', '{','.join(row[3])}', {row[4]}, '{json.dumps(row[5])}');",
+            f"INSERT INTO motifs (id, dataset, motif_id, motif_name, genes, size, weights) VALUES ('{str(id)}', '{row[0]}','{row[1]}', '{row[2]}', '{','.join(row[3])}', {row[4]}, '{json.dumps(row[5])}');",
             file=f,
         )

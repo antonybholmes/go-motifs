@@ -3,8 +3,7 @@ PRAGMA foreign_keys = ON;
 
 DROP TABLE IF EXISTS motifs;
 CREATE TABLE motifs (
-    id INTEGER PRIMARY KEY ASC,
-    public_id TEXT NOT NULL,
+    id TEXT PRIMARY KEY ASC,
     dataset TEXT NOT NULL,
     motif_id TEXT NOT NULL, 
     motif_name TEXT NOT NULL, 
