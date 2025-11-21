@@ -11,28 +11,32 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const DATASETS_SQL = "SELECT DISTINCT motifs.dataset FROM motifs ORDER BY motifs.dataset"
+type (
+	Motif struct {
+		Id        string      `json:"id"`
+		Dataset   string      `json:"dataset"`
+		MotifId   string      `json:"motifId"`
+		MotifName string      `json:"motifName"`
+		Genes     []string    `json:"genes"`
+		Weights   [][]float32 `json:"weights"`
+	}
 
-const SEARCH_SQL = `SELECT 
-	motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights 
-	FROM motifs 
-	WHERE motifs.motif_id LIKE ?1 OR motifs.motif_name LIKE ?1 OR motifs.id = ?1`
+	MotifToGeneMap map[string]Motif
 
-type Motif struct {
-	Id        string      `json:"id"`
-	Dataset   string      `json:"dataset"`
-	MotifId   string      `json:"motifId"`
-	MotifName string      `json:"motifName"`
-	Genes     []string    `json:"genes"`
-	Weights   [][]float32 `json:"weights"`
-}
+	MotifDB struct {
+		db   *sql.DB
+		file string
+	}
+)
 
-type MotifToGeneMap map[string]Motif
+const (
+	DatasetsSql = "SELECT DISTINCT motifs.dataset FROM motifs ORDER BY motifs.dataset"
 
-type MotifDB struct {
-	db   *sql.DB
-	file string
-}
+	SearchSql = `SELECT 
+		motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights 
+		FROM motifs 
+		WHERE motifs.motif_id LIKE :id OR motifs.motif_name LIKE :id OR motifs.id = :id`
+)
 
 func NewMotifDB(file string) *MotifDB {
 	// jsonFile := sys.Must(os.Open(file))
@@ -47,7 +51,7 @@ func NewMotifDB(file string) *MotifDB {
 
 	// return &MotifToGeneDB{db: motifToGeneMap}
 
-	return &MotifDB{file: file, db: sys.Must(sql.Open("sqlite3", file))}
+	return &MotifDB{file: file, db: sys.Must(sql.Open(sys.Sqlite3DB, file))}
 }
 
 func (motifdb *MotifDB) Datasets() ([]string, error) {
@@ -58,7 +62,7 @@ func (motifdb *MotifDB) Datasets() ([]string, error) {
 
 	//log.Debug().Msgf("motif %s", search)
 
-	rows, err := motifdb.db.Query(DATASETS_SQL)
+	rows, err := motifdb.db.Query(DatasetsSql)
 
 	if err != nil {
 		return nil, err
@@ -90,8 +94,8 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 
 	//log.Debug().Msgf("motif %s", search)
 
-	rows, err := motifdb.db.Query(SEARCH_SQL,
-		fmt.Sprintf("%%%s%%", search))
+	rows, err := motifdb.db.Query(SearchSql,
+		sql.Named("id", fmt.Sprintf("%%%s%%", search)))
 
 	if err != nil {
 		// return nil, err
