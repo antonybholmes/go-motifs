@@ -13,7 +13,7 @@ files = [
     "SwissRegulon_human_and_mouse.meme",
 ]
 
-dir = "../data/modules/motifs"
+dir = "../../data/modules/motifs"
 
 db = collections.defaultdict(lambda: collections.defaultdict(set))
 
@@ -253,6 +253,6 @@ with open(os.path.join(dir, "motifs.sql"), "w") as f:
         id = uuid.uuid7()
 
         print(
-            f"INSERT INTO motifs (id, dataset, motif_id, motif_name, genes, size, weights) VALUES ('{str(id)}', '{row[0]}','{row[1]}', '{row[2]}', '{','.join(row[3])}', {row[4]}, '{json.dumps(row[5])}');",
+            f"INSERT INTO motifs (id, dataset, motif_id, motif_name, genes, size, weights) VALUES ('{id}', '{row[0]}','{row[1]}', '{row[2]}', '{','.join(row[3])}', {row[4]}, '{json.dumps(row[5])}');",
             file=f,
         )
