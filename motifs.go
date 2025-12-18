@@ -2,7 +2,6 @@ package motifs
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"slices"
 	"strings"
@@ -33,9 +32,11 @@ const (
 	DatasetsSql = "SELECT DISTINCT motifs.dataset FROM motifs ORDER BY motifs.dataset"
 
 	SearchSql = `SELECT 
-		motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes, motifs.weights 
+		motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes
 		FROM motifs 
 		WHERE motifs.motif_id LIKE :id OR motifs.motif_name LIKE :id OR motifs.id = :id`
+
+	WeightsSql = `SELECT position, a, c, g, t FROM weights WHERE motif_id = :id ORDER BY position ASC`
 )
 
 func NewMotifDB(file string) *MotifDB {
@@ -90,7 +91,6 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 	var ret []*Motif = make([]*Motif, 0, 20)
 
 	var genes string
-	var weights string
 
 	//log.Debug().Msgf("motif %s", search)
 
@@ -110,8 +110,7 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 			&motif.Dataset,
 			&motif.MotifId,
 			&motif.MotifName,
-			&genes,
-			&weights)
+			&genes)
 
 		if err != nil {
 			//log.Debug().Msgf("motif %s", err)
@@ -120,14 +119,40 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 
 		motif.Genes = strings.Split(genes, ",")
 
+		motif.Weights = make([][]float32, 0, 20)
+
+		weightRows, err := motifdb.db.Query(WeightsSql,
+			sql.Named("id", motif.Id))
+
+		if err != nil {
+			return nil, err
+		}
+
+		var position int
+		var a, c, g, t float32
+
+		for weightRows.Next() {
+			err := weightRows.Scan(&position, &a, &c, &g, &t)
+
+			if err != nil {
+				return nil, err
+			}
+
+			motif.Weights = append(motif.Weights, []float32{a, c, g, t})
+		}
+
+		weightRows.Close()
+
 		// weight are stored as a string of floats in database
 		// which we can parse as json
-		json.Unmarshal([]byte(weights), &motif.Weights)
+		//json.Unmarshal([]byte(weights), &motif.Weights)
 
+		// reverse position order
 		if reverse {
 			slices.Reverse(motif.Weights)
 		}
 
+		// complement weights switch A<->T and C<->G
 		if complement {
 			for _, pw := range motif.Weights {
 				slices.Reverse(pw)
