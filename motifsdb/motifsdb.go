@@ -11,7 +11,7 @@ var (
 	once     sync.Once
 )
 
-func InitCache(file string) *motifs.MotifDB {
+func InitMotifDB(file string) *motifs.MotifDB {
 	once.Do(func() {
 		instance = motifs.NewMotifDB(file)
 	})
