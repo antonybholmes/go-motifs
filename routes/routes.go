@@ -3,6 +3,7 @@ package routes
 import (
 	"errors"
 	"strconv"
+	"strings"
 
 	"github.com/antonybholmes/go-motifs"
 	"github.com/antonybholmes/go-motifs/motifsdb"
@@ -68,11 +69,20 @@ func SearchRoute(c *gin.Context) {
 	// 	return
 	// }
 
-	search := c.Query("q")
+	q := c.Query("q")
 
-	if len(search) < motifs.MinSearchLen {
+	if len(q) < motifs.MinSearchLen {
 		web.BadReqResp(c, ErrSearchTooShort)
 		return
+	}
+
+	queries := strings.Split(q, ",")
+
+	// trim spaces around each query
+	queriesTrimmed := make([]string, 0, len(queries))
+
+	for _, query := range queries {
+		queriesTrimmed = append(queriesTrimmed, strings.TrimSpace(query))
 	}
 
 	page, err := strconv.Atoi(c.Query("page"))
@@ -87,10 +97,9 @@ func SearchRoute(c *gin.Context) {
 		pageSize = motifs.MinPageSize
 	}
 
-	//log.Debug().Msgf("motif %v", params)
+	log.Debug().Msgf("queries: %v", queriesTrimmed)
 
-	// Don't care about the errors, just plug empty list into failures
-	result, err := motifsdb.Search(search, page, pageSize, false, false)
+	result, err := motifsdb.Search(queriesTrimmed, page, pageSize, false, false)
 
 	if err != nil {
 		log.Debug().Msgf("motif %s", err)

@@ -27,6 +27,6 @@ func Datasets() ([]*motifs.Dataset, error) {
 	return instance.Datasets()
 }
 
-func Search(search string, page int, pageSize int, reverse bool, complement bool) (*motifs.MotifSearchResult, error) {
-	return instance.Search(search, page, pageSize, reverse, complement)
+func Search(queries []string, page int, pageSize int, reverse bool, complement bool) (*motifs.MotifSearchResult, error) {
+	return instance.Search(queries, page, pageSize, reverse, complement)
 }

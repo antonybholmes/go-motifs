@@ -457,7 +457,8 @@ cursor.execute("BEGIN TRANSACTION;")
 cursor.execute("CREATE INDEX datasets_name_idx ON datasets (name);")
 
 cursor.execute("CREATE INDEX motifs_motif_id_idx ON motifs (motif_id);")
-cursor.execute("CREATE INDEX motifs_motif_name_idx ON motifs (motif_name);")
+cursor.execute("CREATE INDEX motifs_name_idx ON motifs (motif_name);")
+cursor.execute("CREATE INDEX motifs_dataset_id_idx ON motifs (dataset_id);")
 
 cursor.execute("CREATE INDEX weights_motif_id_idx ON weights (motif_id);")
 cursor.execute("CREATE INDEX weights_position_idx ON weights (position);")
