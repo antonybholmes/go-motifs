@@ -6,7 +6,7 @@ import sqlite3
 from nanoid import generate
 import uuid_utils as uuid
 import pandas as pd
-
+from datetime import datetime
 
 files = [
     "JASPAR2022_CORE_redundant_v2.meme",
@@ -20,7 +20,10 @@ db = collections.defaultdict(lambda: collections.defaultdict(set))
 
 data = []
 
+datasets = {}
+
 with open("meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
+    datasets["JASPAR2022_CORE_redundant_v2"] = str(uuid.uuid7())
     for line in f:
         line = line.strip()
 
@@ -69,6 +72,7 @@ with open("meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
 
 
 with open("meme/SwissRegulon_human_and_mouse.meme", "r") as f:
+    datasets["SwissRegulon_human_and_mouse"] = str(uuid.uuid7())
     for line in f:
         line = line.strip()
 
@@ -156,6 +160,7 @@ with open("meme/SwissRegulon_human_and_mouse.meme", "r") as f:
 
 
 with open("meme/jolma2013.meme", "r") as f:
+    datasets["jolma2013"] = str(uuid.uuid7())
     for line in f:
         line = line.strip()
 
@@ -202,6 +207,7 @@ with open("meme/jolma2013.meme", "r") as f:
 
 
 with open("meme/H12CORE_meme_format.meme", "r") as f:
+    datasets["H12CORE"] = str(uuid.uuid7())
     for line in f:
         line = line.strip()
         print(line)
@@ -248,6 +254,7 @@ with open("meme/H12CORE_meme_format.meme", "r") as f:
             data.append(row)
 
 with open("meme/H13CORE_meme_format.meme", "r") as f:
+    datasets["H13CORE"] = str(uuid.uuid7())
     for line in f:
         line = line.strip()
         print(line)
@@ -313,8 +320,10 @@ with open("meme/H13CORE_meme_format.meme", "r") as f:
 # with open("motif_to_gene.json", "w") as f:
 #    json.dump(jdata, f, indent=2)
 
+# get date as y-mm-dd
+date = datetime.now().strftime("%Y-%m-%d")
 
-db = os.path.join(dir, "motifs.db")
+db = os.path.join(dir, f"motifs-{date}.db")
 
 if os.path.exists(db):
     os.remove(db)
@@ -328,15 +337,41 @@ cursor.execute("PRAGMA foreign_keys = ON;")
 
 cursor.execute("BEGIN TRANSACTION;")
 
+cursor.execute("DROP TABLE IF EXISTS datasets;")
+cursor.execute(
+    """
+    CREATE TABLE datasets (
+        id TEXT PRIMARY KEY ASC,
+        name TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+"""
+)
+
+cursor.execute("DROP TABLE IF EXISTS datasets_fts;")
+cursor.execute(
+    """
+    CREATE VIRTUAL TABLE datasets_fts USING fts5(
+        name,
+        content='datasets',
+        content_rowid='rowid'
+    );
+"""
+)
+
 cursor.execute("DROP TABLE IF EXISTS motifs;")
 cursor.execute(
     """
     CREATE TABLE motifs (
         id TEXT PRIMARY KEY ASC,
-        dataset TEXT NOT NULL,
+        dataset_id TEXT NOT NULL,
         motif_id TEXT NOT NULL, 
         motif_name TEXT NOT NULL, 
-        genes TEXT NOT NULL);
+        genes TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE,
+        UNIQUE (dataset_id, motif_id));
 """
 )
 
@@ -371,14 +406,29 @@ cursor.execute(
 cursor.execute("COMMIT;")
 
 cursor.execute("BEGIN TRANSACTION;")
+
+for name in sorted(datasets):
+    id = datasets[name]
+
+    cursor.execute(
+        "INSERT INTO datasets (id, name) VALUES (?, ?);",
+        (
+            id,
+            name,
+        ),
+    )
+
+cursor.execute("COMMIT;")
+
+cursor.execute("BEGIN TRANSACTION;")
 for row in data:
     id = str(uuid.uuid7())
 
     cursor.execute(
-        "INSERT INTO motifs (id, dataset, motif_id, motif_name, genes) VALUES (?, ?, ?, ?, ?);",
+        "INSERT INTO motifs (id, dataset_id, motif_id, motif_name, genes) VALUES (?, ?, ?, ?, ?);",
         (
             id,
-            row["dataset"],
+            datasets[row["dataset"]],
             row["id"],
             row["name"],
             "|".join(row["genes"]),
@@ -401,8 +451,10 @@ for row in data:
 
 cursor.execute("COMMIT;")
 
-#Index everything
+# Index everything
 cursor.execute("BEGIN TRANSACTION;")
+
+cursor.execute("CREATE INDEX datasets_name_idx ON datasets (name);")
 
 cursor.execute("CREATE INDEX motifs_motif_id_idx ON motifs (motif_id);")
 cursor.execute("CREATE INDEX motifs_motif_name_idx ON motifs (motif_name);")
@@ -410,7 +462,7 @@ cursor.execute("CREATE INDEX motifs_motif_name_idx ON motifs (motif_name);")
 cursor.execute("CREATE INDEX weights_motif_id_idx ON weights (motif_id);")
 cursor.execute("CREATE INDEX weights_position_idx ON weights (position);")
 
-
+cursor.execute("INSERT INTO datasets_fts(datasets_fts) VALUES ('rebuild');")
 cursor.execute("INSERT INTO motifs_fts(motifs_fts) VALUES ('rebuild');")
 
 cursor.execute("COMMIT;")

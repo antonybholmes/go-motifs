@@ -23,10 +23,10 @@ func GetInstance() *motifs.MotifDB {
 	return instance
 }
 
-func Datasets() ([]string, error) {
+func Datasets() ([]*motifs.Dataset, error) {
 	return instance.Datasets()
 }
 
-func Search(search string, reverse bool, complement bool) ([]*motifs.Motif, error) {
-	return instance.Search(search, reverse, complement)
+func Search(search string, page int, pageSize int, reverse bool, complement bool) (*motifs.MotifSearchResult, error) {
+	return instance.Search(search, page, pageSize, reverse, complement)
 }
