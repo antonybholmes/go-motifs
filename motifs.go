@@ -59,16 +59,44 @@ const (
 		GROUP BY d.id
 		ORDER BY d.name ASC`
 
+	SearchNumRecordsSql = `SELECT COUNT(m.id) AS total FROM (
+		-- Direct match on motifs.id
+		SELECT m.id 
+		FROM motifs m 
+		WHERE m.id = :id OR m.motif_id LIKE :q OR m.motif_name LIKE :q
+
+		UNION
+
+		-- search datasets
+		SELECT m.id
+		FROM motifs m
+		JOIN datasets d ON m.dataset_id = d.id
+		WHERE d.id = :id OR d.name LIKE :q
+	) AS m;`
+
 	// SearchSql = `SELECT
 	// 	m.id, m.dataset, m.motif_id, m.motif_name, m.genes
 	// 	FROM motifs m
 	// 	WHERE m.id = :id OR m.motif_id LIKE :q OR m.motif_name LIKE :q`
 
-	// SearchFtsSql = `SELECT
-	// 	motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes
-	// 	FROM motifs_fts
-	// 	JOIN motifs ON motifs.rowid = motifs_fts.rowid
-	// 	WHERE motifs_fts MATCH :q`
+	SearchSql = `SELECT m.id, m.dataset, m.motif_id, m.motif_name, m.genes FROM (
+		-- Direct match on motifs.id
+		SELECT m.id, d.name as dataset, m.motif_id, m.motif_name, m.genes
+		FROM motifs m
+		JOIN datasets d ON m.dataset_id = d.id
+		WHERE m.id = :id OR m.motif_id LIKE :q OR m.motif_name LIKE :q
+		
+		UNION
+
+		-- search datasets
+		SELECT m.id, d.name as dataset, m.motif_id, m.motif_name, m.genes
+		FROM motifs m
+		JOIN datasets d ON m.dataset_id = d.id
+		WHERE d.id = :id OR d.name LIKE :q
+	) AS m
+	ORDER BY m.dataset, m.motif_id ASC
+	LIMIT :limit 
+	OFFSET :offset;`
 
 	// search for either exact id or partial match on
 	// either motif_id or motif_name. We limit to 100
@@ -108,15 +136,6 @@ const (
 		JOIN datasets_fts ON d.rowid = datasets_fts.rowid
 		WHERE datasets_fts MATCH :q
 	) AS m;`
-
-	// SearchFtsSql = `SELECT
-	// 	m.motifs.id, m.motifs.dataset, m.motifs.motif_id, m.motifs.motif_name, m.motifs.genes
-	// 	FROM motifs m
-	// 	LEFT JOIN motifs_fts f ON m.rowid = f.rowid
-	// 	WHERE m.id = :id OR f MATCH :q
-	// 	ORDER BY m.dataset, m.motif_id ASC
-	// 	LIMIT :limit
-	// 	OFFSET :offset`
 
 	SearchFtsSql = `SELECT m.id, m.dataset, m.motif_id, m.motif_name, m.genes FROM (
 			-- Direct match on motifs.id
@@ -225,9 +244,12 @@ func (motifdb *MotifDB) Search(search string, page int, pageSize int, reverse bo
 
 	// for full text search, we append wildcard to search term
 	// to allow partial matches
-	q := search + "*"
+	// q := search + "*"
 
-	row := tx.QueryRow(SearchNumRecordsFtsSql, sql.Named("id", search),
+	// original version without FTS
+	q := search + "%"
+
+	row := tx.QueryRow(SearchNumRecordsSql, sql.Named("id", search),
 		sql.Named("q", q))
 
 	// records in total
@@ -238,7 +260,7 @@ func (motifdb *MotifDB) Search(search string, page int, pageSize int, reverse bo
 		return nil, err
 	}
 
-	rows, err := tx.Query(SearchFtsSql,
+	rows, err := tx.Query(SearchSql,
 		sql.Named("id", search),
 		sql.Named("q", q),
 		sql.Named("offset", pageSize*(page-1)),
