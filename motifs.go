@@ -33,15 +33,34 @@ const (
 		FROM motifs 
 		ORDER BY motifs.dataset`
 
-	SearchSql = `SELECT 
-		motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes
-		FROM motifs 
-		WHERE motifs.id = :id OR motifs.motif_id LIKE :q OR motifs.motif_name LIKE :q`
+	// SearchSql = `SELECT 
+	// 	m.id, m.dataset, m.motif_id, m.motif_name, m.genes
+	// 	FROM motifs m
+	// 	WHERE m.id = :id OR m.motif_id LIKE :q OR m.motif_name LIKE :q`
+
+	// SearchFtsSql = `SELECT 
+	// 	motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes
+	// 	FROM motifs_fts 
+	// 	JOIN motifs ON motifs.rowid = motifs_fts.rowid
+	// 	WHERE motifs_fts MATCH :q`
+
+	// search for either exact id or partial match on
+	// either motif_id or motif_name. We limit to 100
+	// for performance reasons and it seems unlikely that
+	// a specific search will yield 100 results
+	SearchFtsSql = `SELECT 
+		m.motifs.id, m.motifs.dataset, m.motifs.motif_id, m.motifs.motif_name, m.motifs.genes
+		FROM motifs m
+		LEFT JOIN motifs_fts f ON m.rowid = f.rowid
+		WHERE m.id = :id OR f MATCH :q
+		ORDER BY m.dataset, m.motif_id ASC
+		LIMIT 100`
 
 	WeightsSql = `SELECT 
-		position, a, c, g, t 
-		FROM weights 
-		WHERE motif_id = :id ORDER BY position ASC`
+		w.position, w.a, w.c, w.g, w.t 
+		FROM weights w
+		WHERE w.motif_id = :id 
+		ORDER BY w.position ASC`
 )
 
 func NewMotifDB(file string) *MotifDB {
@@ -86,12 +105,16 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 
 	//log.Debug().Msgf("motif %s", search)
 
-	rows, err := motifdb.db.Query(SearchSql,
+	// rows, err := motifdb.db.Query(SearchSql,
+	// 	sql.Named("id", search),
+	// 	sql.Named("q", fmt.Sprintf("%%%s%%", search)))
+
+	rows, err := motifdb.db.Query(SearchFtsSql,
 		sql.Named("id", search),
-		sql.Named("q", fmt.Sprintf("%%%s%%", search)))
+		sql.Named("q",  search+"*"))
 
 	if err != nil {
-		// return nil, err
+		return nil, err
 	}
 
 	defer rows.Close()
@@ -106,11 +129,10 @@ func (motifdb *MotifDB) Search(search string, reverse bool, complement bool) ([]
 			&genes)
 
 		if err != nil {
-			//log.Debug().Msgf("motif %s", err)
 			return nil, err
 		}
 
-		motif.Genes = strings.Split(genes, ",")
+		motif.Genes = strings.Split(genes, "|")
 
 		motif.Weights = make([][]float32, 0, 20)
 

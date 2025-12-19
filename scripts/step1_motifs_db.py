@@ -340,8 +340,17 @@ cursor.execute(
 """
 )
 
-cursor.execute("CREATE INDEX motifs_motif_id_idx ON motifs (motif_id);")
-cursor.execute("CREATE INDEX motifs_motif_name_idx ON motifs (motif_name);")
+cursor.execute("DROP TABLE IF EXISTS motifs_fts;")
+cursor.execute(
+    """
+    CREATE VIRTUAL TABLE motifs_fts USING fts5(
+        motif_id,
+        motif_name,
+        content='motifs',
+        content_rowid='rowid'
+    );
+"""
+)
 
 cursor.execute("DROP TABLE IF EXISTS weights;")
 cursor.execute(
@@ -358,8 +367,6 @@ cursor.execute(
 """
 )
 
-cursor.execute("CREATE INDEX weights_motif_id_idx ON weights (motif_id);")
-cursor.execute("CREATE INDEX weights_position_idx ON weights (position);")
 
 cursor.execute("COMMIT;")
 
@@ -374,7 +381,7 @@ for row in data:
             row["dataset"],
             row["id"],
             row["name"],
-            ",".join(row["genes"]),
+            "|".join(row["genes"]),
         ),
     )
 
@@ -393,6 +400,21 @@ for row in data:
         )
 
 cursor.execute("COMMIT;")
+
+#Index everything
+cursor.execute("BEGIN TRANSACTION;")
+
+cursor.execute("CREATE INDEX motifs_motif_id_idx ON motifs (motif_id);")
+cursor.execute("CREATE INDEX motifs_motif_name_idx ON motifs (motif_name);")
+
+cursor.execute("CREATE INDEX weights_motif_id_idx ON weights (motif_id);")
+cursor.execute("CREATE INDEX weights_position_idx ON weights (position);")
+
+
+cursor.execute("INSERT INTO motifs_fts(motifs_fts) VALUES ('rebuild');")
+
+cursor.execute("COMMIT;")
+
 conn.close()
 
 print("Done.")
