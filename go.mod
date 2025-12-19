@@ -4,9 +4,7 @@ go 1.25
 
 replace github.com/antonybholmes/go-sys => ../go-sys
 
-require github.com/antonybholmes/go-sys v0.0.0-20251211184816-38c1e4f69349
-
-require github.com/mattn/go-sqlite3 v1.14.32
+require github.com/antonybholmes/go-sys v0.0.0-20251215211105-61a3d71011f7
 
 require (
 	github.com/google/uuid v1.6.0 // indirect
