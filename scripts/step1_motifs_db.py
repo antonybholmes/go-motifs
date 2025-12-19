@@ -20,7 +20,7 @@ db = collections.defaultdict(lambda: collections.defaultdict(set))
 
 data = []
 
-with open("../meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
+with open("meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
     for line in f:
         line = line.strip()
 
@@ -68,7 +68,7 @@ with open("../meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
                 data.append(row)
 
 
-with open("../meme/SwissRegulon_human_and_mouse.meme", "r") as f:
+with open("meme/SwissRegulon_human_and_mouse.meme", "r") as f:
     for line in f:
         line = line.strip()
 
@@ -155,7 +155,7 @@ with open("../meme/SwissRegulon_human_and_mouse.meme", "r") as f:
             data.append(row)
 
 
-with open("../meme/jolma2013.meme", "r") as f:
+with open("meme/jolma2013.meme", "r") as f:
     for line in f:
         line = line.strip()
 
@@ -201,7 +201,7 @@ with open("../meme/jolma2013.meme", "r") as f:
             data.append(row)
 
 
-with open("../meme/H12CORE_meme_format.meme", "r") as f:
+with open("meme/H12CORE_meme_format.meme", "r") as f:
     for line in f:
         line = line.strip()
         print(line)
@@ -247,7 +247,7 @@ with open("../meme/H12CORE_meme_format.meme", "r") as f:
 
             data.append(row)
 
-with open("../meme/H13CORE_meme_format.meme", "r") as f:
+with open("meme/H13CORE_meme_format.meme", "r") as f:
     for line in f:
         line = line.strip()
         print(line)

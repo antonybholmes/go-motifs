@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/antonybholmes/go-sys"
-	_ "github.com/mattn/go-sqlite3"
 )
 
 type (
@@ -34,9 +33,12 @@ const (
 	SearchSql = `SELECT 
 		motifs.id, motifs.dataset, motifs.motif_id, motifs.motif_name, motifs.genes
 		FROM motifs 
-		WHERE motifs.motif_id LIKE :id OR motifs.motif_name LIKE :id OR motifs.id = :id`
+		WHERE motifs.id = :id OR motifs.motif_id LIKE :id OR motifs.motif_name LIKE :id`
 
-	WeightsSql = `SELECT position, a, c, g, t FROM weights WHERE motif_id = :id ORDER BY position ASC`
+	WeightsSql = `SELECT 
+		position, a, c, g, t 
+		FROM weights 
+		WHERE motif_id = :id ORDER BY position ASC`
 )
 
 func NewMotifDB(file string) *MotifDB {
