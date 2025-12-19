@@ -5,6 +5,7 @@ import (
 	"slices"
 	"strings"
 
+	basemath "github.com/antonybholmes/go-math"
 	"github.com/antonybholmes/go-sys"
 )
 
@@ -40,6 +41,10 @@ type (
 )
 
 const (
+	MinSearchLen = 3
+	MinPageSize  = 10
+	MaxPageSize  = 100
+
 	// DatasetsSql = `SELECT DISTINCT
 	// 	motifs.dataset
 	// 	FROM motifs
@@ -194,6 +199,11 @@ func (motifdb *MotifDB) Datasets() ([]*Dataset, error) {
 }
 
 func (motifdb *MotifDB) Search(search string, page int, pageSize int, reverse bool, complement bool) (*MotifSearchResult, error) {
+	// clamp page number
+	page = basemath.Max(page, 1)
+
+	// clamp page size
+	pageSize = basemath.Min(basemath.Max(pageSize, MinPageSize), MaxPageSize)
 
 	result := MotifSearchResult{Total: 0, Page: page, PageSize: pageSize, Motifs: make([]*Motif, 0, 20)}
 
