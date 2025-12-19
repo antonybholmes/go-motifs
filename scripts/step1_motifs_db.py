@@ -358,6 +358,8 @@ cursor.execute(
 """
 )
 
+cursor.execute("CREATE INDEX weights_motif_id_idx ON weights (motif_id);")
+cursor.execute("CREATE INDEX weights_position_idx ON weights (position);")
 
 cursor.execute("COMMIT;")
 
