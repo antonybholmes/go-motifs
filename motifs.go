@@ -419,74 +419,76 @@ func (motifdb *MotifDB) BoolSearch(q string,
 		return nil, err
 	}
 
+	placeholderOffset := 0
+
+	// motifIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, matchType query.MatchType, not bool) string {
+	// 	// for slqlite
+	// 	ph := fmt.Sprintf("?%d", placeholderOffset+placeholderIndex)
+
+	// 	equalOp := " = "
+	// 	if not {
+	// 		equalOp = " != "
+	// 	}
+
+	// 	// we use like even for exact matches to allow for case insensitivity
+	// 	return "m.id" + equalOp + ph //] fmt.Sprintf("(gex.gene_symbol LIKE %s OR gex.ensembl_id LIKE %s)", ph, ph)
+	// })
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	//placeholderOffset :=  len(motifIdWhere.Args)
+
 	motifIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, matchType query.MatchType, not bool) string {
-		// for slqlite
-		ph := fmt.Sprintf("?%d", placeholderIndex)
-
-		equalOp := " = "
-		if not {
-			equalOp = " != "
-		}
-
-		// we use like even for exact matches to allow for case insensitivity
-		return "m.id" + equalOp + ph //] fmt.Sprintf("(gex.gene_symbol LIKE %s OR gex.ensembl_id LIKE %s)", ph, ph)
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	placeholderOffset := len(motifIdWhere.Args)
-
-	motifNameWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, matchType query.MatchType, not bool) string {
 		// for slqlite
 		ph := fmt.Sprintf("?%d", placeholderOffset+placeholderIndex)
 
-		equalOp := " LIKE "
+		equalOp := " LIKE " + ph
 		if not {
-			equalOp = " NOT LIKE "
+			equalOp = " NOT LIKE " + ph
 		}
 
 		// we use like even for exact matches to allow for case insensitivity
-		return "(m.motif_id" + equalOp + ph + " OR m.motif_name" + equalOp + ph + ")"
+		return "(m.id" + equalOp + " OR m.motif_id" + equalOp + " OR m.motif_name" + equalOp + ")"
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	placeholderOffset += len(motifNameWhere.Args)
+	//placeholderOffset += len(motifNameWhere.Args)
+
+	// datasetIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, matchType query.MatchType, not bool) string {
+	// 	// for slqlite
+	// 	ph := fmt.Sprintf("?%d", placeholderOffset+placeholderIndex)
+
+	// 	equalOp := " = "
+	// 	if not {
+	// 		equalOp = " != "
+	// 	}
+
+	// 	// we use like even for exact matches to allow for case insensitivity
+	// 	return "d.id" + equalOp + ph //] fmt.Sprintf("(gex.gene_symbol LIKE %s OR gex.ensembl_id LIKE %s)", ph, ph)
+	// })
+
+	// if err != nil {
+	// 	return nil, err
+	// }
+
+	//placeholderOffset += len(datasetIdWhere.Args)
 
 	datasetIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, matchType query.MatchType, not bool) string {
 		// for slqlite
 		ph := fmt.Sprintf("?%d", placeholderOffset+placeholderIndex)
 
-		equalOp := " = "
+		equalOp := " LIKE " + ph
 		if not {
-			equalOp = " != "
+			equalOp = " NOT LIKE " + ph
 		}
 
 		// we use like even for exact matches to allow for case insensitivity
-		return "d.id" + equalOp + ph //] fmt.Sprintf("(gex.gene_symbol LIKE %s OR gex.ensembl_id LIKE %s)", ph, ph)
-	})
-
-	if err != nil {
-		return nil, err
-	}
-
-	placeholderOffset += len(datasetIdWhere.Args)
-
-	datasetNameWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, matchType query.MatchType, not bool) string {
-		// for slqlite
-		ph := fmt.Sprintf("?%d", placeholderOffset+placeholderIndex)
-
-		equalOp := " LIKE "
-		if not {
-			equalOp = " NOT LIKE "
-		}
-
-		// we use like even for exact matches to allow for case insensitivity
-		return "d.name" + equalOp + ph
+		return "(d.id" + equalOp + " OR d.name" + equalOp + ")"
 	})
 
 	if err != nil {
@@ -497,21 +499,22 @@ func (motifdb *MotifDB) BoolSearch(q string,
 			-- Direct match on motifs.id
 			SELECT m.id
 			FROM motifs m 
-			WHERE (%s) OR (%s) 
+			WHERE  %s 
 			UNION
 
 			-- search datasets
 			SELECT m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id 
-			WHERE (%s) OR (%s) 
+			WHERE %s 
 		) AS m;`,
 		motifIdWhere.Sql,
-		motifNameWhere.Sql,
-		datasetIdWhere.Sql,
-		datasetNameWhere.Sql)
+		datasetIdWhere.Sql)
 
-	row := tx.QueryRow(countSql)
+	log.Debug().Msgf("count sql: %s", countSql)
+	log.Debug().Msgf("count args: %v", motifIdWhere.Args)
+
+	row := tx.QueryRow(countSql, motifIdWhere.Args...)
 
 	// records in total
 
@@ -528,22 +531,21 @@ func (motifdb *MotifDB) BoolSearch(q string,
 			-- Direct match on motifs.id
 			SELECT m.id, d.name as dataset, m.motif_id, m.motif_name, m.genes
 			FROM motifs m 
-			WHERE (%s) OR (%s) 
+			JOIN datasets d ON m.dataset_id = d.id
+			WHERE %s 
 			UNION
 
 			-- search datasets
 			SELECT m.id, d.name as dataset, m.motif_id, m.motif_name, m.genes
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id `+
-		`WHERE (%s) OR (%s) 
+		`WHERE %s 
 		) AS m
 		ORDER BY 
 		m.dataset, m.motif_id ASC 
 		LIMIT %d OFFSET %d`,
 		motifIdWhere.Sql,
-		motifNameWhere.Sql,
 		datasetIdWhere.Sql,
-		datasetNameWhere.Sql,
 		pageSize,
 		pageSize*(page-1))
 
