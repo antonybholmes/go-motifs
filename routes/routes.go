@@ -8,6 +8,7 @@ import (
 	"github.com/antonybholmes/go-motifs"
 	"github.com/antonybholmes/go-motifs/motifsdb"
 	"github.com/antonybholmes/go-sys/log"
+	"github.com/antonybholmes/go-sys/query"
 	"github.com/antonybholmes/go-web"
 	"github.com/gin-gonic/gin"
 )
@@ -76,6 +77,8 @@ func SearchRoute(c *gin.Context) {
 		return
 	}
 
+	q = query.SanitizeQuery(q)
+
 	queries := strings.Split(q, ",")
 
 	// trim spaces around each query
@@ -97,9 +100,21 @@ func SearchRoute(c *gin.Context) {
 		pageSize = motifs.MinPageSize
 	}
 
-	log.Debug().Msgf("queries: %v", queriesTrimmed)
+	searchMode := c.Query("searchMode")
 
-	result, err := motifsdb.Search(queriesTrimmed, page, pageSize, false, false)
+	var result *motifs.MotifSearchResult
+
+	// we can enable bool search mode for more complex queries
+	if strings.HasPrefix(searchMode, "b") {
+		log.Debug().Msgf("bool search mode")
+
+		result, err = motifsdb.BoolSearch(q, page, pageSize, false, false)
+	} else {
+		// regular search mode
+		log.Debug().Msgf("queries: %v", queriesTrimmed)
+
+		result, err = motifsdb.Search(queriesTrimmed, page, pageSize, false, false)
+	}
 
 	if err != nil {
 		log.Debug().Msgf("motif %s", err)
