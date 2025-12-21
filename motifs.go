@@ -357,7 +357,7 @@ func NewMotifDB(file string) *MotifDB {
 		db:    sys.Must(sql.Open(sys.Sqlite3DB, file))}
 }
 
-func (motifdb *MotifDB) Datasets() ([]*Dataset, error) {
+func (motifdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 
 	if cached, found := motifdb.cache.Get("datasets"); found {
 		log.Debug().Msgf("motif cache hit for datasets")
@@ -388,7 +388,9 @@ func (motifdb *MotifDB) Datasets() ([]*Dataset, error) {
 		datasets = append(datasets, &dataset)
 	}
 
-	motifdb.cache.Add("datasets", datasets)
+	if useCache {
+		motifdb.cache.Add("datasets", datasets)
+	}
 
 	return datasets, nil
 }
@@ -411,11 +413,9 @@ func (motifdb *MotifDB) Search(queries []string,
 		page.PageSize,
 		revComp)
 
-	if useCache {
-		if cached, found := motifdb.cache.Get(key); found {
-			log.Debug().Msgf("motif cache hit for key %s", key)
-			return cached.(*MotifSearchResult), nil
-		}
+	if cached, found := motifdb.cache.Get(key); found {
+		log.Debug().Msgf("motif cache hit for key %s", key)
+		return cached.(*MotifSearchResult), nil
 	}
 
 	result := MotifSearchResult{Total: 0,
@@ -546,7 +546,7 @@ func (motifdb *MotifDB) Search(queries []string,
 
 	defer rows.Close()
 
-	return motifdb.processRows(key, tx, rows, revComp, &result)
+	return motifdb.processRows(key, tx, rows, revComp, useCache, &result)
 }
 
 // More complex boolean search
@@ -569,11 +569,9 @@ func (motifdb *MotifDB) BoolSearch(q string,
 		page.PageSize,
 		revComp)
 
-	if useCache {
-		if cached, found := motifdb.cache.Get(key); found {
-			log.Debug().Msgf("motif cache hit for key %s", key)
-			return cached.(*MotifSearchResult), nil
-		}
+	if cached, found := motifdb.cache.Get(key); found {
+		log.Debug().Msgf("motif cache hit for key %s", key)
+		return cached.(*MotifSearchResult), nil
 	}
 
 	result := MotifSearchResult{Total: 0,
@@ -715,7 +713,7 @@ func (motifdb *MotifDB) BoolSearch(q string,
 
 	defer rows.Close()
 
-	return motifdb.processRows(key, tx, rows, revComp, &result)
+	return motifdb.processRows(key, tx, rows, revComp, useCache, &result)
 }
 
 // both search methods use this to process rows and fetch weights
@@ -723,6 +721,7 @@ func (motifdb *MotifDB) processRows(key string,
 	tx *sql.Tx,
 	rows *sql.Rows,
 	revComp bool,
+	useCache bool,
 	result *MotifSearchResult) (*MotifSearchResult, error) {
 	var genes string
 	// we ignore dataset name here since we fetch it in the main query
@@ -785,7 +784,9 @@ func (motifdb *MotifDB) processRows(key string,
 		result.Motifs = append(result.Motifs, &motif)
 	}
 
-	motifdb.cache.Add(key, result)
+	if useCache {
+		motifdb.cache.Add(key, result)
+	}
 
 	return result, nil
 

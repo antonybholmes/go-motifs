@@ -64,9 +64,17 @@ func ParseParamsFromPost(c *gin.Context) (*ReqParams, error) {
 }
 
 func DatasetsRoute(c *gin.Context) {
+	params, err := ParseParamsFromPost(c)
+
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	useCache := useCacheFromString(params.UseCache)
 
 	// Don't care about the errors, just plug empty list into failures
-	datasets, err := motifsdb.Datasets()
+	datasets, err := motifsdb.Datasets(useCache)
 
 	if err != nil {
 		c.Error(err)
@@ -87,7 +95,7 @@ func SearchRoute(c *gin.Context) {
 		return
 	}
 
-	log.Debug().Msgf("motif search %v", params)
+	//log.Debug().Msgf("motif search %v", params)
 
 	q := params.Q
 

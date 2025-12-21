@@ -25,8 +25,8 @@ func GetInstance() *motifs.MotifDB {
 	return instance
 }
 
-func Datasets() ([]*motifs.Dataset, error) {
-	return instance.Datasets()
+func Datasets(useCache bool) ([]*motifs.Dataset, error) {
+	return instance.Datasets(useCache)
 }
 
 func Search(queries []string,
