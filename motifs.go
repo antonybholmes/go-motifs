@@ -469,27 +469,11 @@ func (motifdb *MotifDB) Search(queries []string,
 
 	stmt.Close()
 
-	_, err = tx.Exec(TempDatasetSql)
+	err = addTempDatasets(tx, datasets)
 
 	if err != nil {
 		return nil, err
 	}
-
-	stmt, err = tx.Prepare(InsertTempDatasetSql)
-
-	if err != nil {
-		return nil, err
-	}
-
-	for _, ds := range datasets {
-		_, err := stmt.Exec(sql.Named("id", ds))
-
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	stmt.Close()
 
 	log.Debug().Msgf("queries inserted")
 
@@ -562,7 +546,7 @@ func (motifdb *MotifDB) BoolSearch(q string,
 	// clamp page size
 	page.PageSize = min(max(page.PageSize, MinPageSize), MaxPageSize)
 
-	key := fmt.Sprintf("q:%s:d:%s:p:%d:ps:%d:rev:%t",
+	key := fmt.Sprintf("q:%s:d:%s:p:%d:ps:%d:rev:%t:mode:bool",
 		q,
 		strings.Join(datasets, ","),
 		page.Page,
@@ -591,27 +575,10 @@ func (motifdb *MotifDB) BoolSearch(q string,
 
 	defer tx.Rollback()
 
-	// make temp table and insert datasets
-	_, err = tx.Exec(TempDatasetSql)
+	err = addTempDatasets(tx, datasets)
 
 	if err != nil {
 		return nil, err
-	}
-
-	stmt, err := tx.Prepare(InsertTempDatasetSql)
-
-	if err != nil {
-		return nil, err
-	}
-
-	defer stmt.Close()
-
-	for _, ds := range datasets {
-		_, err := stmt.Exec(sql.Named("id", ds))
-
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	tree, err := query.SqlBoolTree(q)
@@ -620,13 +587,13 @@ func (motifdb *MotifDB) BoolSearch(q string,
 		return nil, err
 	}
 
-	motifIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, matchType query.MatchType, not bool) string {
+	motifIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, value string) string {
 		// for slqlite
-		ph := fmt.Sprintf(":p%d", placeholderIndex)
+		ph := query.IndexedParam(placeholderIndex)
 
-		if not {
-			return "(m.id NOT LIKE " + ph + " AND m.motif_id NOT LIKE " + ph + " AND m.motif_name NOT LIKE " + ph + ")"
-		}
+		// if not {
+		// 	return "(m.id NOT LIKE " + ph + " AND m.motif_id NOT LIKE " + ph + " AND m.motif_name NOT LIKE " + ph + ")"
+		// }
 
 		// we use like even for exact matches to allow for case insensitivity
 		return "(m.id LIKE " + ph + " OR m.motif_id LIKE " + ph + " OR m.motif_name LIKE " + ph + ")"
@@ -636,13 +603,12 @@ func (motifdb *MotifDB) BoolSearch(q string,
 		return nil, err
 	}
 
-	datasetIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, matchType query.MatchType, not bool) string {
+	datasetIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, value string) string {
 		// for slqlite
-		ph := fmt.Sprintf(":p%d", placeholderIndex)
-
-		if not {
-			return "(d.id NOT LIKE " + ph + " AND d.name NOT LIKE " + ph + ")"
-		}
+		ph := query.IndexedParam(placeholderIndex)
+		// if not {
+		// 	return "(d.id NOT LIKE " + ph + " AND d.name NOT LIKE " + ph + ")"
+		// }
 
 		return "(d.id LIKE " + ph + " OR d.name LIKE " + ph + ")"
 	})
@@ -657,10 +623,9 @@ func (motifdb *MotifDB) BoolSearch(q string,
 	args := []any{sql.Named("limit", page.PageSize),
 		sql.Named("offset", page.PageSize*(page.Page-1))}
 
+	args = append(args, query.IndexedNamedArgs(motifIdWhere.Args)...)
+
 	// append query args as named parameters to match
-	for i, arg := range motifIdWhere.Args {
-		args = append(args, sql.Named(fmt.Sprintf("p%d", i+1), arg))
-	}
 
 	countSql := fmt.Sprintf(BoolCountSql,
 		motifIdSql,
@@ -790,4 +755,31 @@ func (motifdb *MotifDB) processRows(key string,
 
 	return result, nil
 
+}
+
+func addTempDatasets(tx *sql.Tx, datasets []string) error {
+	// make temp table and insert datasets
+	_, err := tx.Exec(TempDatasetSql)
+
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(InsertTempDatasetSql)
+
+	if err != nil {
+		return err
+	}
+
+	defer stmt.Close()
+
+	for _, ds := range datasets {
+		_, err := stmt.Exec(sql.Named("id", ds))
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
