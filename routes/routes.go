@@ -36,6 +36,8 @@ var (
 	ErrSearchTooShort = errors.New("search too short")
 )
 
+// utility to convert cache param string to bool
+// default is true if empty
 func useCacheFromString(s string) bool {
 	if s == "" {
 		return true
@@ -43,7 +45,7 @@ func useCacheFromString(s string) bool {
 
 	sLower := strings.ToLower(s)
 
-	if sLower == "1" || sLower == "true" || sLower == "yes" {
+	if sLower == "1" || strings.HasPrefix(sLower, "t") || strings.HasPrefix(sLower, "y") {
 		return true
 	}
 
