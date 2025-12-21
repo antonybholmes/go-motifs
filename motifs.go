@@ -587,7 +587,7 @@ func (motifdb *MotifDB) BoolSearch(q string,
 		return nil, err
 	}
 
-	motifIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, value string) string {
+	motifIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, value string, addParens bool) string {
 		// for slqlite
 		ph := query.IndexedParam(placeholderIndex)
 
@@ -596,21 +596,22 @@ func (motifdb *MotifDB) BoolSearch(q string,
 		// }
 
 		// we use like even for exact matches to allow for case insensitivity
-		return "(m.id LIKE " + ph + " OR m.motif_id LIKE " + ph + " OR m.motif_name LIKE " + ph + ")"
+		return query.AddParens("m.id LIKE "+ph+" OR m.motif_id LIKE "+ph+" OR m.motif_name LIKE "+ph, addParens)
+
 	})
 
 	if err != nil {
 		return nil, err
 	}
 
-	datasetIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, value string) string {
+	datasetIdWhere, err := query.SqlBoolQueryFromTree(tree, func(placeholderIndex int, value string, addParens bool) string {
 		// for slqlite
 		ph := query.IndexedParam(placeholderIndex)
 		// if not {
 		// 	return "(d.id NOT LIKE " + ph + " AND d.name NOT LIKE " + ph + ")"
 		// }
 
-		return "(d.id LIKE " + ph + " OR d.name LIKE " + ph + ")"
+		return query.AddParens("d.id LIKE "+ph+" OR d.name LIKE "+ph, addParens)
 	})
 
 	if err != nil {
