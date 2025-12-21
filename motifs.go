@@ -67,15 +67,15 @@ const (
 	// 	FROM motifs
 	// 	ORDER BY motifs.dataset`
 
-	TempPatternSql = `CREATE TEMP TABLE IF NOT EXISTS temp_patterns (
+	TempQueriesTableSql = `CREATE TEMP TABLE IF NOT EXISTS temp_queries (
 		id TEXT PRIMARY KEY,
 		query TEXT,
 		UNIQUE(id, query)
 	);`
 
-	InsertTempPatternSql = `INSERT INTO temp_patterns (id, query) VALUES (:id, :query) ON CONFLICT DO NOTHING;`
+	InsertTempQueriesSql = `INSERT INTO temp_queries (id, query) VALUES (:id, :query) ON CONFLICT DO NOTHING;`
 
-	TempDatasetSql = `CREATE TEMP TABLE IF NOT EXISTS temp_datasets (id TEXT PRIMARY KEY);`
+	TempDatasetTableSql = `CREATE TEMP TABLE IF NOT EXISTS temp_datasets (id TEXT PRIMARY KEY);`
 
 	InsertTempDatasetSql = `INSERT INTO temp_datasets (id) VALUES (:id) ON CONFLICT DO NOTHING;`
 
@@ -115,7 +115,8 @@ const (
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_patterns tp ON 
+			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_queries tp ON 
 				m.id = tp.id OR	
 				m.motif_id LIKE tp.query OR
 				m.motif_name LIKE tp.query 
@@ -127,11 +128,11 @@ const (
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_patterns tp ON 
+			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_queries tp ON 
 				d.id = tp.id OR 
 				d.name LIKE tp.query
 		) AS m
-		JOIN temp_datasets td ON m.dataset_id = td.id
 		GROUP BY m.dataset_id;`
 
 	// SearchSql = `SELECT
@@ -175,7 +176,8 @@ const (
 			m.genes
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_patterns tp ON 
+			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_queries tp ON 
 				m.id = tp.id OR
 				m.motif_id LIKE tp.query OR 
 				m.motif_name LIKE tp.query
@@ -192,12 +194,12 @@ const (
 			m.genes
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_patterns tp ON 
+			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_queries tp ON 
 				d.id = tp.id OR 
 				d.name LIKE tp.query
 			
 		) AS m
-		JOIN temp_datasets td ON m.dataset_id = td.id
 		ORDER BY m.dataset_id, m.motif_id ASC
 		LIMIT :limit 
 		OFFSET :offset;`
@@ -290,6 +292,7 @@ const (
 			m.dataset_id,
 			m.id
 			FROM motifs m
+			JOIN temp_datasets td ON m.dataset_id = td.id
 			WHERE %s
 
 			UNION
@@ -303,7 +306,6 @@ const (
 			JOIN temp_datasets td ON d.id = td.id
 			WHERE %s 
 		) AS m
-		JOIN temp_datasets td ON m.dataset_id = td.id 
 		GROUP BY m.dataset_id;`
 
 	BoolSearchSql = `SELECT 
@@ -323,6 +325,7 @@ const (
 			m.genes
 			FROM motifs m 
 			JOIN datasets d ON m.dataset_id = d.id
+			JOIN temp_datasets td ON d.id = td.id
 			WHERE %s
 
 			UNION
@@ -337,9 +340,9 @@ const (
 			m.genes
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
+			JOIN temp_datasets td ON d.id = td.id
 			WHERE %s 
 		) AS m
-		JOIN temp_datasets td ON m.dataset_id = td.id
 		ORDER BY m.dataset_id, m.motif_id ASC 
 		LIMIT :limit 
 		OFFSET :offset;`
@@ -445,13 +448,13 @@ func (motifdb *MotifDB) Search(queries []string,
 
 	log.Debug().Msgf("creating temp table")
 
-	_, err = tx.Exec(TempPatternSql)
+	_, err = tx.Exec(TempQueriesTableSql)
 
 	if err != nil {
 		return nil, err
 	}
 
-	stmt, err := tx.Prepare(InsertTempPatternSql)
+	stmt, err := tx.Prepare(InsertTempQueriesSql)
 
 	if err != nil {
 		return nil, err
@@ -760,7 +763,7 @@ func (motifdb *MotifDB) processRows(key string,
 
 func addTempDatasets(tx *sql.Tx, datasets []string) error {
 	// make temp table and insert datasets
-	_, err := tx.Exec(TempDatasetSql)
+	_, err := tx.Exec(TempDatasetTableSql)
 
 	if err != nil {
 		return err
