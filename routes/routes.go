@@ -2,7 +2,6 @@ package routes
 
 import (
 	"errors"
-	"strconv"
 	"strings"
 
 	"github.com/antonybholmes/go-motifs"
@@ -13,16 +12,16 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-var (
-	ErrSearchTooShort = errors.New("search too short")
-)
-
 type (
 	ReqParams struct {
-		Search     string `json:"search"`
-		Exact      bool   `json:"exact"`
-		Reverse    bool   `json:"reverse"`
-		Complement bool   `json:"complement"`
+		Q string `json:"q" form:"q"`
+		//Exact      bool     `json:"exact"`
+		RevComp    bool     `json:"revComp"`
+		Datasets   []string `json:"datasets"`
+		Page       int      `json:"page" form:"page"`
+		PageSize   int      `json:"pageSize" form:"pageSize"`
+		SearchMode string   `json:"searchMode" form:"searchMode"`
+		UseCache   string   `json:"cache" form:"cache"`
 	}
 
 	MotifRes struct {
@@ -33,11 +32,29 @@ type (
 	}
 )
 
+var (
+	ErrSearchTooShort = errors.New("search too short")
+)
+
+func useCacheFromString(s string) bool {
+	if s == "" {
+		return true
+	}
+
+	sLower := strings.ToLower(s)
+
+	if sLower == "1" || sLower == "true" || sLower == "yes" {
+		return true
+	}
+
+	return false
+}
+
 func ParseParamsFromPost(c *gin.Context) (*ReqParams, error) {
 
 	var params ReqParams
 
-	err := c.Bind(&params)
+	err := web.BindQueryAndJSON(c, &params)
 
 	if err != nil {
 		return nil, err
@@ -63,14 +80,16 @@ func DatasetsRoute(c *gin.Context) {
 
 func SearchRoute(c *gin.Context) {
 
-	// params, err := ParseParamsFromPost(c)
+	params, err := ParseParamsFromPost(c)
 
-	// if err != nil {
-	// 	c.Error(err)
-	// 	return
-	// }
+	if err != nil {
+		c.Error(err)
+		return
+	}
 
-	q := c.Query("q")
+	log.Debug().Msgf("motif search %v", params)
+
+	q := params.Q
 
 	if len(q) < motifs.MinSearchLen {
 		web.BadReqResp(c, ErrSearchTooShort)
@@ -79,41 +98,38 @@ func SearchRoute(c *gin.Context) {
 
 	q = query.SanitizeQuery(q)
 
-	queries := strings.Split(q, ",")
+	// // which datasets to search in
+	// datasets := sys.NewStringSet()
 
-	// trim spaces around each query
-	queriesTrimmed := make([]string, 0, len(queries))
+	// for _, ds := range params.Datasets {
+	// 	datasets.Add(ds)
+	// }
 
-	for _, query := range queries {
-		queriesTrimmed = append(queriesTrimmed, strings.TrimSpace(query))
-	}
-
-	page, err := strconv.Atoi(c.Query("page"))
-
-	if err != nil || page < 1 {
-		page = 1
-	}
-
-	pageSize, err := strconv.Atoi(c.Query("pageSize"))
-
-	if err != nil {
-		pageSize = motifs.MinPageSize
-	}
-
-	searchMode := c.Query("searchMode")
+	useCache := useCacheFromString(params.UseCache)
 
 	var result *motifs.MotifSearchResult
 
+	page := motifs.Paging{
+		Page:     max(params.Page, 1),
+		PageSize: max(params.PageSize, motifs.MinPageSize),
+	}
+
 	// we can enable bool search mode for more complex queries
-	if strings.HasPrefix(searchMode, "b") {
+	if strings.HasPrefix(params.SearchMode, "b") {
 		log.Debug().Msgf("bool search mode")
 
-		result, err = motifsdb.BoolSearch(q, page, pageSize, false, false)
+		result, err = motifsdb.BoolSearch(q, params.Datasets, &page, false, useCache)
 	} else {
-		// regular search mode
-		log.Debug().Msgf("queries: %v", queriesTrimmed)
+		queries := strings.Split(q, ",")
 
-		result, err = motifsdb.Search(queriesTrimmed, page, pageSize, false, false)
+		// trim spaces around each query
+		queriesTrimmed := make([]string, 0, len(queries))
+
+		for _, query := range queries {
+			queriesTrimmed = append(queriesTrimmed, strings.TrimSpace(query))
+		}
+
+		result, err = motifsdb.Search(queriesTrimmed, params.Datasets, &page, false, useCache)
 	}
 
 	if err != nil {

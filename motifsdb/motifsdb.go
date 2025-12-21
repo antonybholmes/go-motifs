@@ -6,6 +6,8 @@ import (
 	"github.com/antonybholmes/go-motifs"
 )
 
+type CacheMode string
+
 var (
 	instance *motifs.MotifDB
 	once     sync.Once
@@ -27,10 +29,19 @@ func Datasets() ([]*motifs.Dataset, error) {
 	return instance.Datasets()
 }
 
-func Search(queries []string, page int, pageSize int, reverse bool, complement bool) (*motifs.MotifSearchResult, error) {
-	return instance.Search(queries, page, pageSize, reverse, complement)
+func Search(queries []string,
+	datasets []string,
+	page *motifs.Paging,
+	revComp bool,
+	useCache bool) (*motifs.MotifSearchResult, error) {
+	return instance.Search(queries, datasets, page, revComp, useCache)
 }
 
-func BoolSearch(q string, page int, pageSize int, reverse bool, complement bool) (*motifs.MotifSearchResult, error) {
-	return instance.BoolSearch(q, page, pageSize, reverse, complement)
+func BoolSearch(q string,
+	datasets []string,
+	page *motifs.Paging,
+
+	revComp,
+	useCache bool) (*motifs.MotifSearchResult, error) {
+	return instance.BoolSearch(q, datasets, page, revComp, useCache)
 }

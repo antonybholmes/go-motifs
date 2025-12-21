@@ -32,17 +32,17 @@ require (
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.3.1 // indirect
 	golang.org/x/arch v0.23.0 // indirect
-	golang.org/x/exp v0.0.0-20251209150349-8475f28825e9 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
 
 require (
-	github.com/antonybholmes/go-math v0.0.0-20251211184815-6e7285b975dd
 	github.com/antonybholmes/go-web v0.0.0-20251215211100-5555b69aa3c0
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/matoous/go-nanoid/v2 v2.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/richardlehane/mscfb v1.0.4 // indirect
 	github.com/richardlehane/msoleps v1.0.4 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
