@@ -14,7 +14,7 @@ import (
 
 type (
 	ReqParams struct {
-		Q string `json:"q" form:"q"`
+		Query string `json:"q" form:"q"`
 		//Exact      bool     `json:"exact"`
 		RevComp    bool     `json:"revComp"`
 		Datasets   []string `json:"datasets"`
@@ -22,13 +22,6 @@ type (
 		PageSize   int      `json:"pageSize" form:"pageSize"`
 		SearchMode string   `json:"searchMode" form:"searchMode"`
 		UseCache   string   `json:"cache" form:"cache"`
-	}
-
-	MotifRes struct {
-		Search     string          `json:"search"`
-		Motifs     []*motifs.Motif `json:"motifs"`
-		Reverse    bool            `json:"reverse"`
-		Complement bool            `json:"complement"`
 	}
 )
 
@@ -84,8 +77,6 @@ func DatasetsRoute(c *gin.Context) {
 	}
 
 	web.MakeDataResp(c, "", datasets)
-
-	//web.MakeDataResp(c, "", mutationdbcache.GetInstance().List())
 }
 
 func SearchRoute(c *gin.Context) {
@@ -99,7 +90,7 @@ func SearchRoute(c *gin.Context) {
 
 	//log.Debug().Msgf("motif search %v", params)
 
-	q := params.Q
+	q := params.Query
 
 	if len(q) < motifs.MinSearchLen {
 		web.BadReqResp(c, ErrSearchTooShort)
@@ -125,7 +116,7 @@ func SearchRoute(c *gin.Context) {
 	}
 
 	// we can enable bool search mode for more complex queries
-	if strings.HasPrefix(params.SearchMode, "b") {
+	if strings.HasPrefix(params.SearchMode, "adv") {
 		log.Debug().Msgf("bool search mode")
 
 		result, err = motifsdb.BoolSearch(q, params.Datasets, &page, false, useCache)

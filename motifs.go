@@ -635,9 +635,8 @@ func (mdb *MotifDB) BoolSearch(q string,
 		motifIdSql,
 		datasetIdSql)
 
-	log.Debug().Msgf("count sql: %s", countSql)
-
-	log.Debug().Msgf("count args: %v", args)
+	//log.Debug().Msgf("count sql: %s", countSql)
+	//log.Debug().Msgf("count args: %v", args)
 
 	rows, err := tx.Query(countSql, args...)
 
@@ -662,21 +661,17 @@ func (mdb *MotifDB) BoolSearch(q string,
 		result.Total += dataset.MotifCount
 	}
 
-	// easier to code limit and offset directly into sql here
-	// than via named parameters due to the dynamic nature of the query
-	// and they are vetted ints so there is no sql injection risk
 	searchSql := fmt.Sprintf(BoolSearchSql,
 		motifIdSql,
 		datasetIdSql)
 
-	log.Debug().Msgf("search sql: %s", searchSql)
+	//log.Debug().Msgf("search sql: %s", searchSql)
 
 	// make dynamic args list
 
 	rows, err = tx.Query(searchSql, args...)
 
 	if err != nil {
-		log.Debug().Msgf("boolx  search query error: %s", err)
 		return nil, err
 	}
 
