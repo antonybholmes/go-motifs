@@ -26,8 +26,8 @@ type (
 	}
 
 	Dataset struct {
-		DatasetCount
 		Name string `json:"name"`
+		DatasetCount
 	}
 
 	Motif struct {
@@ -48,8 +48,8 @@ type (
 	}
 
 	MotifSearchResult struct {
-		Motifs []*Motif `json:"motifs"`
 		Paging *Paging  `json:"paging"`
+		Motifs []*Motif `json:"motifs"`
 		Total  int      `json:"total"`
 	}
 )
@@ -360,9 +360,9 @@ func NewMotifDB(file string) *MotifDB {
 		db:    sys.Must(sql.Open(sys.Sqlite3DB, file))}
 }
 
-func (motifdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
+func (mdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 
-	if cached, found := motifdb.cache.Get("datasets"); found {
+	if cached, found := mdb.cache.Get("datasets"); found {
 		log.Debug().Msgf("motif cache hit for datasets")
 		return cached.([]*Dataset), nil
 	}
@@ -371,7 +371,7 @@ func (motifdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 
 	//log.Debug().Msgf("motif %s", search)
 
-	rows, err := motifdb.db.Query(DatasetsSql)
+	rows, err := mdb.db.Query(DatasetsSql)
 
 	if err != nil {
 		return nil, err
@@ -392,13 +392,13 @@ func (motifdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 	}
 
 	if useCache {
-		motifdb.cache.Add("datasets", datasets)
+		mdb.cache.Add("datasets", datasets)
 	}
 
 	return datasets, nil
 }
 
-func (motifdb *MotifDB) Search(queries []string,
+func (mdb *MotifDB) Search(queries []string,
 	datasets []string,
 	page *Paging,
 	revComp bool,
@@ -416,7 +416,7 @@ func (motifdb *MotifDB) Search(queries []string,
 		page.PageSize,
 		revComp)
 
-	if cached, found := motifdb.cache.Get(key); found {
+	if cached, found := mdb.cache.Get(key); found {
 		log.Debug().Msgf("motif cache hit for key %s", key)
 		return cached.(*MotifSearchResult), nil
 	}
@@ -428,11 +428,11 @@ func (motifdb *MotifDB) Search(queries []string,
 
 	log.Debug().Msgf("motif %v", queries)
 
-	// rows, err := motifdb.db.Query(SearchSql,
+	// rows, err := mdb.db.Query(SearchSql,
 	// 	sql.Named("id", search),
 	// 	sql.Named("q", fmt.Sprintf("%%%s%%", search)))
 
-	tx, err := motifdb.db.Begin()
+	tx, err := mdb.db.Begin()
 
 	if err != nil {
 		return nil, err
@@ -533,11 +533,11 @@ func (motifdb *MotifDB) Search(queries []string,
 
 	defer rows.Close()
 
-	return motifdb.processRows(key, tx, rows, revComp, useCache, &result)
+	return mdb.processRows(key, tx, rows, revComp, useCache, &result)
 }
 
 // More complex boolean search
-func (motifdb *MotifDB) BoolSearch(q string,
+func (mdb *MotifDB) BoolSearch(q string,
 	datasets []string,
 	page *Paging,
 	revComp bool,
@@ -556,7 +556,7 @@ func (motifdb *MotifDB) BoolSearch(q string,
 		page.PageSize,
 		revComp)
 
-	if cached, found := motifdb.cache.Get(key); found {
+	if cached, found := mdb.cache.Get(key); found {
 		log.Debug().Msgf("motif cache hit for key %s", key)
 		return cached.(*MotifSearchResult), nil
 	}
@@ -566,11 +566,11 @@ func (motifdb *MotifDB) BoolSearch(q string,
 
 		Motifs: make([]*Motif, 0, 20)}
 
-	// rows, err := motifdb.db.Query(SearchSql,
+	// rows, err := mdb.db.Query(SearchSql,
 	// 	sql.Named("id", search),
 	// 	sql.Named("q", fmt.Sprintf("%%%s%%", search)))
 
-	tx, err := motifdb.db.Begin()
+	tx, err := mdb.db.Begin()
 
 	if err != nil {
 		return nil, err
@@ -682,11 +682,11 @@ func (motifdb *MotifDB) BoolSearch(q string,
 
 	defer rows.Close()
 
-	return motifdb.processRows(key, tx, rows, revComp, useCache, &result)
+	return mdb.processRows(key, tx, rows, revComp, useCache, &result)
 }
 
 // both search methods use this to process rows and fetch weights
-func (motifdb *MotifDB) processRows(key string,
+func (mdb *MotifDB) processRows(key string,
 	tx *sql.Tx,
 	rows *sql.Rows,
 	revComp bool,
@@ -754,7 +754,7 @@ func (motifdb *MotifDB) processRows(key string,
 	}
 
 	if useCache {
-		motifdb.cache.Add(key, result)
+		mdb.cache.Add(key, result)
 	}
 
 	return result, nil
