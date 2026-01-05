@@ -7,7 +7,7 @@ replace github.com/antonybholmes/go-sys => ../go-sys
 replace github.com/antonybholmes/go-web => ../go-web
 
 require (
-	github.com/antonybholmes/go-sys v0.0.0-20251215211105-61a3d71011f7
+	github.com/antonybholmes/go-sys v0.0.0-20251221180058-882857878f72
 	github.com/gin-gonic/gin v1.11.0
 )
 
@@ -44,7 +44,7 @@ require (
 	github.com/matoous/go-nanoid/v2 v2.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/richardlehane/mscfb v1.0.4 // indirect
+	github.com/richardlehane/mscfb v1.0.5 // indirect
 	github.com/richardlehane/msoleps v1.0.4 // indirect
 	github.com/rs/zerolog v1.34.0 // indirect
 	github.com/tiendc/go-deepcopy v1.7.2 // indirect
