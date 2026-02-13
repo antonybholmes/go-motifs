@@ -15,7 +15,7 @@ import (
 )
 
 type (
-	Paging struct {
+	SearchPage struct {
 		Page     int `json:"page"`
 		PageSize int `json:"pageSize"`
 	}
@@ -36,7 +36,7 @@ type (
 		MotifId   string      `json:"motifId"`
 		MotifName string      `json:"motifName"`
 		Genes     []string    `json:"genes"`
-		Weights   [][]float32 `json:"weights"`
+		Weights   [][]float64 `json:"weights"`
 	}
 
 	MotifToGeneMap map[string]Motif
@@ -48,9 +48,9 @@ type (
 	}
 
 	MotifSearchResult struct {
-		Paging *Paging  `json:"paging"`
-		Motifs []*Motif `json:"motifs"`
-		Total  int      `json:"total"`
+		Paging *SearchPage `json:"paging"`
+		Motifs []*Motif    `json:"motifs"`
+		Total  int         `json:"total"`
 	}
 )
 
@@ -201,7 +201,7 @@ const (
 		) AS m
 		ORDER BY 
 			m.dataset_public_id, 
-			m.motif_public_id
+			m.motif_id
 		LIMIT :limit 
 		OFFSET :offset;`
 
@@ -264,12 +264,13 @@ const (
 			JOIN temp_datasets td ON d.public_id = td.id
 			WHERE <<DATASETS>>
 		) AS m
-		ORDER BY m.dataset_id, m.motif_id ASC 
+		ORDER BY 
+			m.dataset_id, 
+			m.motif_id
 		LIMIT :limit 
 		OFFSET :offset;`
 
 	WeightsSql = `SELECT 
-		w.position, 
 		w.a, 
 		w.c, 
 		w.g, 
@@ -277,7 +278,7 @@ const (
 		FROM weights w
 		JOIN motifs m ON w.motif_id = m.id
 		WHERE m.public_id = :id 
-		ORDER BY w.position`
+		ORDER BY w.id`
 )
 
 func NewMotifDB(file string) *MotifDB {
@@ -326,7 +327,7 @@ func (mdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 
 func (mdb *MotifDB) Search(queries []string,
 	datasets []string,
-	page *Paging,
+	page *SearchPage,
 	revComp bool,
 	useCache bool) (*MotifSearchResult, error) {
 	// clamp page number
@@ -465,7 +466,7 @@ func (mdb *MotifDB) Search(queries []string,
 // More complex boolean search
 func (mdb *MotifDB) BoolSearch(q string,
 	datasets []string,
-	page *Paging,
+	page *SearchPage,
 	revComp bool,
 	useCache bool) (*MotifSearchResult, error) {
 
@@ -612,7 +613,6 @@ func (mdb *MotifDB) processRows(
 	tx *sql.Tx,
 	rows *sql.Rows,
 	revComp bool,
-
 	result *MotifSearchResult) (*MotifSearchResult, error) {
 	var genes string
 	// we ignore dataset name here since we fetch it in the main query
@@ -637,7 +637,7 @@ func (mdb *MotifDB) processRows(
 
 		motif.Genes = strings.Split(genes, "|")
 
-		motif.Weights = make([][]float32, 0, 20)
+		motif.Weights = make([][]float64, 0, 20)
 
 		weightRows, err := tx.Query(WeightsSql,
 			sql.Named("id", motif.PublicId))
@@ -649,19 +649,18 @@ func (mdb *MotifDB) processRows(
 
 		defer weightRows.Close()
 
-		var position int
-		var a, c, g, t float32
+		var a, c, g, t float64
 
 		for weightRows.Next() {
 			log.Debug().Msgf("scanning weight row for motif %s", motif.PublicId)
-			err := weightRows.Scan(&position, &a, &c, &g, &t)
+			err := weightRows.Scan(&a, &c, &g, &t)
 
 			if err != nil {
 				log.Debug().Msgf("error scanning weight row for motif %s: %s", motif.PublicId, err)
 				return nil, err
 			}
 
-			motif.Weights = append(motif.Weights, []float32{a, c, g, t})
+			motif.Weights = append(motif.Weights, []float64{a, c, g, t})
 		}
 
 		log.Debug().Msgf("scanning weight row for motif values: %v", motif.Weights)
@@ -672,8 +671,11 @@ func (mdb *MotifDB) processRows(
 
 		// reverse position order
 		if revComp {
+			// reverse order of weights
 			slices.Reverse(motif.Weights)
 
+			// reverse order of values in each position
+			// to complement so A becomes T and C becomes G
 			for _, pw := range motif.Weights {
 				slices.Reverse(pw)
 			}
@@ -706,8 +708,8 @@ func addTempDatasets(tx *sql.Tx, datasets []string) error {
 
 	defer stmt.Close()
 
-	for _, ds := range datasets {
-		_, err := stmt.Exec(sql.Named("id", ds))
+	for _, dataset := range datasets {
+		_, err := stmt.Exec(sql.Named("id", dataset))
 
 		if err != nil {
 			return err

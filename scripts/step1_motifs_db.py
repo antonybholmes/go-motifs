@@ -434,7 +434,6 @@ cursor.execute(
     CREATE TABLE weights (
         id INTEGER PRIMARY KEY,
         motif_id INTEGER NOT NULL, 
-        position INTEGER NOT NULL,
         a REAL NOT NULL,
         c REAL NOT NULL,
         g REAL NOT NULL,
@@ -478,10 +477,9 @@ for row in data:
 
     for i, weight in enumerate(row["weights"]):
         cursor.execute(
-            "INSERT INTO weights ( motif_id, position, a, c, g, t) VALUES (?, ?, ?, ?, ?, ?);",
+            "INSERT INTO weights (motif_id, a, c, g, t) VALUES (?, ?, ?, ?, ?);",
             (
                 row["index"],
-                i + 1,
                 weight[0],
                 weight[1],
                 weight[2],
@@ -494,14 +492,13 @@ cursor.execute("COMMIT;")
 # Index everything
 cursor.execute("BEGIN TRANSACTION;")
 
-cursor.execute("CREATE INDEX datasets_name_idx ON datasets (name);")
+cursor.execute("CREATE INDEX idx_datasets_name ON datasets (name);")
 
-cursor.execute("CREATE INDEX motifs_motif_id_idx ON motifs (motif_id);")
-cursor.execute("CREATE INDEX motifs_name_idx ON motifs (motif_name);")
-cursor.execute("CREATE INDEX motifs_dataset_id_idx ON motifs (dataset_id);")
+cursor.execute("CREATE INDEX idx_motifs_motif_id ON motifs (motif_id);")
+cursor.execute("CREATE INDEX idx_motifs_name ON motifs (motif_name);")
+cursor.execute("CREATE INDEX idx_motifs_dataset_id ON motifs (dataset_id);")
 
-cursor.execute("CREATE INDEX weights_motif_id_idx ON weights (motif_id);")
-cursor.execute("CREATE INDEX weights_position_idx ON weights (position);")
+cursor.execute("CREATE INDEX idx_weights_motif_id ON weights (motif_id);")
 
 cursor.execute("INSERT INTO datasets_fts(datasets_fts) VALUES ('rebuild');")
 cursor.execute("INSERT INTO motifs_fts(motifs_fts) VALUES ('rebuild');")

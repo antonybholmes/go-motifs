@@ -110,7 +110,7 @@ func SearchRoute(c *gin.Context) {
 
 	var result *motifs.MotifSearchResult
 
-	page := motifs.Paging{
+	page := motifs.SearchPage{
 		Page:     max(params.Page, 1),
 		PageSize: max(params.PageSize, motifs.MinPageSize),
 	}

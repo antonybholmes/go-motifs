@@ -31,7 +31,7 @@ func Datasets(useCache bool) ([]*motifs.Dataset, error) {
 
 func Search(queries []string,
 	datasets []string,
-	page *motifs.Paging,
+	page *motifs.SearchPage,
 	revComp bool,
 	useCache bool) (*motifs.MotifSearchResult, error) {
 	return instance.Search(queries, datasets, page, revComp, useCache)
@@ -39,7 +39,7 @@ func Search(queries []string,
 
 func BoolSearch(q string,
 	datasets []string,
-	page *motifs.Paging,
+	page *motifs.SearchPage,
 
 	revComp,
 	useCache bool) (*motifs.MotifSearchResult, error) {
