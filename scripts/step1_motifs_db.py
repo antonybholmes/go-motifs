@@ -382,11 +382,12 @@ cursor.execute(
     CREATE TABLE datasets (
         id INTEGER PRIMARY KEY,
         public_id TEXT NOT NULL,
-        name TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+        name TEXT NOT NULL);
 """
 )
+
+cursor.execute("CREATE INDEX idx_datasets_name ON datasets (LOWER(name));")
+
 
 cursor.execute("DROP TABLE IF EXISTS datasets_fts;")
 cursor.execute(
@@ -406,15 +407,19 @@ cursor.execute(
         id INTEGER PRIMARY KEY,
         public_id TEXT NOT NULL,
         dataset_id INTEGER NOT NULL,
-        motif_id INTEGER NOT NULL, 
+        motif_id TEXT NOT NULL, 
         motif_name TEXT NOT NULL, 
         genes TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE,
-        UNIQUE (dataset_id, motif_id));
+        length INTEGER NOT NULL,
+        UNIQUE (dataset_id, motif_id),
+        FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE);
 """
 )
+
+cursor.execute("CREATE INDEX idx_motifs_motif_id ON motifs (LOWER(motif_id));")
+cursor.execute("CREATE INDEX idx_motifs_name ON motifs (LOWER(motif_name));")
+cursor.execute("CREATE INDEX idx_motifs_dataset_id ON motifs (dataset_id);")
+
 
 cursor.execute("DROP TABLE IF EXISTS motifs_fts;")
 cursor.execute(
@@ -433,7 +438,8 @@ cursor.execute(
     """
     CREATE TABLE weights (
         id INTEGER PRIMARY KEY,
-        motif_id INTEGER NOT NULL, 
+        motif_id INTEGER NOT NULL,
+        position INTEGER NOT NULL,
         a REAL NOT NULL,
         c REAL NOT NULL,
         g REAL NOT NULL,
@@ -441,11 +447,7 @@ cursor.execute(
         FOREIGN KEY (motif_id) REFERENCES motifs(id) ON DELETE CASCADE);
 """
 )
-
-
-cursor.execute("COMMIT;")
-
-cursor.execute("BEGIN TRANSACTION;")
+cursor.execute("CREATE INDEX idx_weights_motif_id ON weights (motif_id);")
 
 for name in sorted(datasets):
 
@@ -458,13 +460,11 @@ for name in sorted(datasets):
         ),
     )
 
-cursor.execute("COMMIT;")
 
-cursor.execute("BEGIN TRANSACTION;")
 for row in data:
 
     cursor.execute(
-        "INSERT INTO motifs (id, public_id, dataset_id, motif_id, motif_name, genes) VALUES (?, ?, ?, ?, ?, ?);",
+        "INSERT INTO motifs (id, public_id, dataset_id, motif_id, motif_name, genes, length) VALUES (?, ?, ?, ?, ?, ?, ?);",
         (
             row["index"],
             str(uuid.uuid7()),
@@ -472,14 +472,16 @@ for row in data:
             row["id"],
             row["name"],
             "|".join(row["genes"]),
+            len(row["weights"]),
         ),
     )
 
     for i, weight in enumerate(row["weights"]):
         cursor.execute(
-            "INSERT INTO weights (motif_id, a, c, g, t) VALUES (?, ?, ?, ?, ?);",
+            "INSERT INTO weights (motif_id, position, a, c, g, t) VALUES (?, ?, ?, ?, ?, ?);",
             (
                 row["index"],
+                i + 1,
                 weight[0],
                 weight[1],
                 weight[2],
@@ -487,18 +489,6 @@ for row in data:
             ),
         )
 
-cursor.execute("COMMIT;")
-
-# Index everything
-cursor.execute("BEGIN TRANSACTION;")
-
-cursor.execute("CREATE INDEX idx_datasets_name ON datasets (name);")
-
-cursor.execute("CREATE INDEX idx_motifs_motif_id ON motifs (motif_id);")
-cursor.execute("CREATE INDEX idx_motifs_name ON motifs (motif_name);")
-cursor.execute("CREATE INDEX idx_motifs_dataset_id ON motifs (dataset_id);")
-
-cursor.execute("CREATE INDEX idx_weights_motif_id ON weights (motif_id);")
 
 cursor.execute("INSERT INTO datasets_fts(datasets_fts) VALUES ('rebuild');")
 cursor.execute("INSERT INTO motifs_fts(motifs_fts) VALUES ('rebuild');")

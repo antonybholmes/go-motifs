@@ -2,7 +2,6 @@ package motifs
 
 import (
 	"database/sql"
-	"fmt"
 	"time"
 
 	"slices"
@@ -11,46 +10,46 @@ import (
 	"github.com/antonybholmes/go-sys"
 	"github.com/antonybholmes/go-sys/log"
 	"github.com/antonybholmes/go-sys/query"
-	"github.com/hashicorp/golang-lru/v2/expirable"
 )
 
 type (
-	SearchPage struct {
+	Paging struct {
 		Page     int `json:"page"`
+		Pages    int `json:"pages,omitempty"`
 		PageSize int `json:"pageSize"`
 	}
 
-	DatasetCount struct {
-		PublicId   string `json:"id"`
-		MotifCount int    `json:"motifCount"`
-	}
+	// Dataset struct {
+	// 	DatasetCount
+	// 	Name string `json:"name"`
+	// }
 
 	Dataset struct {
-		DatasetCount
-		Name string `json:"name"`
+		sys.Entity
+		MotifCount int `json:"motifCount"`
 	}
 
 	Motif struct {
-		PublicId  string      `json:"id"`
-		Dataset   string      `json:"dataset"`
-		MotifId   string      `json:"motifId"`
-		MotifName string      `json:"motifName"`
-		Genes     []string    `json:"genes"`
-		Weights   [][]float64 `json:"weights"`
+		sys.Entity
+		Dataset *sys.Entity `json:"dataset"`
+		MotifId string      `json:"motifId"`
+
+		Genes   []string    `json:"genes"`
+		Weights [][]float64 `json:"weights"`
 	}
 
 	MotifToGeneMap map[string]Motif
 
 	MotifDB struct {
-		db    *sql.DB
-		cache *expirable.LRU[string, any]
-		file  string
+		db *sql.DB
+		//cache *expirable.LRU[string, any]
+		file string
 	}
 
 	MotifSearchResult struct {
-		Paging *SearchPage `json:"paging"`
-		Motifs []*Motif    `json:"motifs"`
-		Total  int         `json:"total"`
+		Paging *Paging  `json:"paging"`
+		Motifs []*Motif `json:"motifs"`
+		Total  int      `json:"total"`
 	}
 )
 
@@ -106,12 +105,14 @@ const (
 	// 	) AS m;`
 
 	SearchNumRecordsSql = `SELECT DISTINCT 
-		m.dataset_id, 
+		m.dataset_public_id,
+		m.dataset_name,
 		COUNT(m.id) AS total 
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
-			d.public_id AS dataset_id, 
+			d.public_id AS dataset_public_id,
+			d.name AS dataset_name, 
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
@@ -125,7 +126,8 @@ const (
 
 			-- search datasets
 			SELECT 
-			d.public_id AS dataset_id, 
+			d.public_id AS dataset_public_id,
+			d.name AS dataset_name, 
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
@@ -134,7 +136,7 @@ const (
 				d.public_id = tp.id OR 
 				d.name LIKE tp.query
 		) AS m
-		GROUP BY m.dataset_id;`
+		GROUP BY m.dataset_public_id;`
 
 	// SearchSql = `SELECT
 	// 	m.id, m.dataset, m.motif_id, m.motif_name, m.genes
@@ -161,16 +163,18 @@ const (
 	// 	OFFSET :offset;`
 
 	SearchSql = `SELECT 
-		m.motif_public_id, 
 		m.dataset_public_id,
+		m.dataset_name,
+		m.motif_public_id,
 		m.motif_id, 
 		m.motif_name, 
 		m.genes 
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
-			m.public_id AS motif_public_id, 
 			d.public_id AS dataset_public_id,
+			d.name AS dataset_name,
+			m.public_id AS motif_public_id, 
 			m.motif_id, 
 			m.motif_name, 
 			m.genes
@@ -186,8 +190,9 @@ const (
 
 			-- search datasets
 			SELECT 
-			m.public_id AS motif_public_id, 
 			d.public_id AS dataset_public_id,
+			d.name AS dataset_name,
+			m.public_id AS motif_public_id, 
 			m.motif_id, 
 			m.motif_name,
 			m.genes
@@ -206,12 +211,12 @@ const (
 		OFFSET :offset;`
 
 	BoolCountSql = `SELECT
-		m.dataset_id,
+		m.public_dataset_id,
 		COUNT(m.id) AS total 
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
-			d.public_id AS dataset_id,
+			d.public_id AS public_dataset_id,
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
@@ -222,26 +227,29 @@ const (
 
 			-- search datasets
 			SELECT 
-			d.public_id AS dataset_id,
+			d.public_id AS public_dataset_id,
+			d.name AS dataset_name,
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
 			WHERE <<DATASETS>>
 		) AS m
-		GROUP BY m.dataset_id;`
+		GROUP BY m.public_dataset_id;`
 
 	BoolSearchSql = `SELECT 
-		m.motif_public_id,
 		m.dataset_public_id,
+		m.dataset_name,
+		m.motif_public_id,
 		m.motif_id, 
 		m.motif_name, 
 		m.genes 
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
-			m.public_id AS motif_public_id,
 			d.public_id AS dataset_public_id,
+			d.name AS dataset_name,
+			m.public_id AS motif_public_id,
 			m.motif_id, 
 			m.motif_name, 
 			m.genes
@@ -254,8 +262,9 @@ const (
 
 			-- search datasets
 			SELECT 
-			m.public_id motif_public_id, 
 			d.public_id AS dataset_public_id,
+			d.name AS dataset_name,
+			m.public_id motif_public_id, 
 			m.motif_id, 
 			m.motif_name, 
 			m.genes
@@ -265,7 +274,7 @@ const (
 			WHERE <<DATASETS>>
 		) AS m
 		ORDER BY 
-			m.dataset_id, 
+			m.public_dataset_id, 
 			m.motif_id
 		LIMIT :limit 
 		OFFSET :offset;`
@@ -283,16 +292,16 @@ const (
 
 func NewMotifDB(file string) *MotifDB {
 	return &MotifDB{file: file,
-		cache: expirable.NewLRU[string, any](CacheSize, nil, CacheExpiry),
-		db:    sys.Must(sql.Open(sys.Sqlite3DB, file))}
+		//cache: expirable.NewLRU[string, any](CacheSize, nil, CacheExpiry),
+		db: sys.Must(sql.Open(sys.Sqlite3DB, file))}
 }
 
 func (mdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 
-	if cached, found := mdb.cache.Get("datasets"); found {
-		log.Debug().Msgf("motif cache hit for datasets")
-		return cached.([]*Dataset), nil
-	}
+	// if cached, found := mdb.cache.Get("datasets"); found {
+	// 	log.Debug().Msgf("motif cache hit for datasets")
+	// 	return cached.([]*Dataset), nil
+	// }
 
 	datasets := make([]*Dataset, 0, 20)
 
@@ -318,38 +327,38 @@ func (mdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 		datasets = append(datasets, &dataset)
 	}
 
-	if useCache {
-		mdb.cache.Add("datasets", datasets)
-	}
+	// if useCache {
+	// 	mdb.cache.Add("datasets", datasets)
+	// }
 
 	return datasets, nil
 }
 
 func (mdb *MotifDB) Search(queries []string,
 	datasets []string,
-	page *SearchPage,
+	paging *Paging,
 	revComp bool,
 	useCache bool) (*MotifSearchResult, error) {
 	// clamp page number
-	page.Page = max(page.Page, 1)
+	paging.Page = max(paging.Page, 1)
 
 	// clamp page size
-	page.PageSize = min(max(page.PageSize, MinPageSize), MaxPageSize)
+	paging.PageSize = min(max(paging.PageSize, MinPageSize), MaxPageSize)
 
-	key := fmt.Sprintf("q:%s:d:%s:p:%d:ps:%d:rev:%t",
-		strings.Join(queries, ","),
-		strings.Join(datasets, ","),
-		page.Page,
-		page.PageSize,
-		revComp)
+	// key := fmt.Sprintf("q:%s:d:%s:p:%d:ps:%d:rev:%t",
+	// 	strings.Join(queries, ","),
+	// 	strings.Join(datasets, ","),
+	// 	page.Page,
+	// 	page.PageSize,
+	// 	revComp)
 
-	if cached, found := mdb.cache.Get(key); found {
-		log.Debug().Msgf("motif cache hit for key %s", key)
-		return cached.(*MotifSearchResult), nil
-	}
+	// if cached, found := mdb.cache.Get(key); found {
+	// 	log.Debug().Msgf("motif cache hit for key %s", key)
+	// 	return cached.(*MotifSearchResult), nil
+	// }
 
 	result := MotifSearchResult{Total: 0,
-		Paging: page,
+		Paging: paging,
 
 		Motifs: make([]*Motif, 0, 20)}
 
@@ -366,12 +375,6 @@ func (mdb *MotifDB) Search(queries []string,
 	}
 
 	defer tx.Rollback()
-
-	//_, err = tx.Exec(DropTempPatternSql)
-
-	//if err != nil {
-	//	return nil, err
-	//}
 
 	log.Debug().Msgf("creating temp table")
 
@@ -429,9 +432,9 @@ func (mdb *MotifDB) Search(queries []string,
 	defer rows.Close()
 
 	for rows.Next() {
-		var dataset DatasetCount
+		var dataset Dataset
 
-		err := rows.Scan(&dataset.PublicId, &dataset.MotifCount)
+		err := rows.Scan(&dataset.PublicId, &dataset.Name, &dataset.MotifCount)
 
 		if err != nil {
 			return nil, err
@@ -442,6 +445,8 @@ func (mdb *MotifDB) Search(queries []string,
 
 	log.Debug().Msgf("total motifs found: %d", result.Total)
 
+	paging.Pages = (result.Total + paging.PageSize - 1) / paging.PageSize
+
 	// rows, err := tx.Query(SearchSql,
 	// 	sql.Named("id", search),
 	// 	sql.Named("q", q),
@@ -450,8 +455,8 @@ func (mdb *MotifDB) Search(queries []string,
 	// )
 
 	rows, err = tx.Query(SearchSql,
-		sql.Named("offset", page.PageSize*(page.Page-1)),
-		sql.Named("limit", page.PageSize),
+		sql.Named("offset", paging.PageSize*(paging.Page-1)),
+		sql.Named("limit", paging.PageSize),
 	)
 
 	if err != nil {
@@ -466,30 +471,30 @@ func (mdb *MotifDB) Search(queries []string,
 // More complex boolean search
 func (mdb *MotifDB) BoolSearch(q string,
 	datasets []string,
-	page *SearchPage,
+	paging *Paging,
 	revComp bool,
 	useCache bool) (*MotifSearchResult, error) {
 
 	// clamp page number
-	page.Page = max(page.Page, 1)
+	paging.Page = max(paging.Page, 1) //sys.Clamp(page.Page, 1, 1000)
 
 	// clamp page size
-	page.PageSize = min(max(page.PageSize, MinPageSize), MaxPageSize)
+	paging.PageSize = sys.Clamp(paging.PageSize, MinPageSize, MaxPageSize)
 
-	key := fmt.Sprintf("q:%s:d:%s:p:%d:ps:%d:rev:%t:mode:bool",
-		q,
-		strings.Join(datasets, ","),
-		page.Page,
-		page.PageSize,
-		revComp)
+	// key := fmt.Sprintf("q:%s:d:%s:p:%d:ps:%d:rev:%t:mode:bool",
+	// 	q,
+	// 	strings.Join(datasets, ","),
+	// 	page.Page,
+	// 	page.PageSize,
+	// 	revComp)
 
-	if cached, found := mdb.cache.Get(key); found {
-		log.Debug().Msgf("motif cache hit for key %s", key)
-		return cached.(*MotifSearchResult), nil
-	}
+	// if cached, found := mdb.cache.Get(key); found {
+	// 	log.Debug().Msgf("motif cache hit for key %s", key)
+	// 	return cached.(*MotifSearchResult), nil
+	// }
 
 	result := MotifSearchResult{Total: 0,
-		Paging: page,
+		Paging: paging,
 		Motifs: make([]*Motif, 0, 20)}
 
 	// rows, err := mdb.db.Query(SearchSql,
@@ -550,8 +555,8 @@ func (mdb *MotifDB) BoolSearch(q string,
 	motifIdSql := motifIdWhere.Sql
 	datasetIdSql := datasetIdWhere.Sql
 
-	args := []any{sql.Named("limit", page.PageSize),
-		sql.Named("offset", page.PageSize*(page.Page-1))}
+	args := []any{sql.Named("limit", paging.PageSize),
+		sql.Named("offset", paging.PageSize*(paging.Page-1))}
 
 	args = append(args, query.IndexedNamedArgs(motifIdWhere.Args)...)
 
@@ -579,9 +584,9 @@ func (mdb *MotifDB) BoolSearch(q string,
 	defer rows.Close()
 
 	for rows.Next() {
-		var dataset DatasetCount
+		var dataset Dataset
 
-		err := rows.Scan(&dataset.PublicId, &dataset.MotifCount)
+		err := rows.Scan(&dataset.PublicId, &dataset.Name, &dataset.MotifCount)
 
 		if err != nil {
 			return nil, err
@@ -589,6 +594,9 @@ func (mdb *MotifDB) BoolSearch(q string,
 
 		result.Total += dataset.MotifCount
 	}
+
+	// calculate total pages
+	paging.Pages = (result.Total + paging.PageSize - 1) / paging.PageSize
 
 	query = strings.Replace(BoolSearchSql, "<<MOTIFS>>", motifIdSql, 1)
 	query = strings.Replace(query, "<<DATASETS>>", datasetIdSql, 1)
@@ -621,12 +629,13 @@ func (mdb *MotifDB) processRows(
 
 	for rows.Next() {
 		var motif Motif
+		motif.Dataset = &sys.Entity{}
 
-		err := rows.Scan(&motif.PublicId,
-			&motif.Dataset,
-			//&datasetName,
+		err := rows.Scan(&motif.Dataset.PublicId,
+			&motif.Dataset.Name,
+			&motif.PublicId,
 			&motif.MotifId,
-			&motif.MotifName,
+			&motif.Name,
 			&genes)
 
 		log.Debug().Msgf("processing motif: %v", motif)
@@ -643,7 +652,6 @@ func (mdb *MotifDB) processRows(
 			sql.Named("id", motif.PublicId))
 
 		if err != nil {
-			log.Debug().Msgf("error querying weights for motif %s: %s", motif.PublicId, err)
 			return nil, err
 		}
 
@@ -652,18 +660,14 @@ func (mdb *MotifDB) processRows(
 		var a, c, g, t float64
 
 		for weightRows.Next() {
-			log.Debug().Msgf("scanning weight row for motif %s", motif.PublicId)
 			err := weightRows.Scan(&a, &c, &g, &t)
 
 			if err != nil {
-				log.Debug().Msgf("error scanning weight row for motif %s: %s", motif.PublicId, err)
 				return nil, err
 			}
 
 			motif.Weights = append(motif.Weights, []float64{a, c, g, t})
 		}
-
-		log.Debug().Msgf("scanning weight row for motif values: %v", motif.Weights)
 
 		// weight are stored as a string of floats in database
 		// which we can parse as json

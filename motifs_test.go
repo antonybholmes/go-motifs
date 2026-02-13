@@ -9,7 +9,7 @@ func TestGenes(t *testing.T) {
 
 	db := NewMotifDB("../data/modules/motifs/motifs.db")
 
-	page := SearchPage{
+	page := Paging{
 		Page:     1,
 		PageSize: 100,
 	}
