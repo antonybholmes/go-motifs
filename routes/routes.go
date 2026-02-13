@@ -121,6 +121,7 @@ func SearchRoute(c *gin.Context) {
 
 		result, err = motifsdb.BoolSearch(q, params.Datasets, &page, false, useCache)
 	} else {
+		log.Debug().Msgf("bool search mode disabled")
 		queries := strings.Split(q, ",")
 
 		// trim spaces around each query
@@ -138,6 +139,8 @@ func SearchRoute(c *gin.Context) {
 		c.Error(err)
 		return
 	}
+
+	log.Debug().Msgf("motif search result %v", result)
 
 	web.MakeDataResp(c, "",
 		result)

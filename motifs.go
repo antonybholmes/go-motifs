@@ -21,17 +21,17 @@ type (
 	}
 
 	DatasetCount struct {
-		Id         string `json:"id"`
+		PublicId   string `json:"id"`
 		MotifCount int    `json:"motifCount"`
 	}
 
 	Dataset struct {
-		Name string `json:"name"`
 		DatasetCount
+		Name string `json:"name"`
 	}
 
 	Motif struct {
-		Id        string      `json:"id"`
+		PublicId  string      `json:"id"`
 		Dataset   string      `json:"dataset"`
 		MotifId   string      `json:"motifId"`
 		MotifName string      `json:"motifName"`
@@ -82,7 +82,7 @@ const (
 	//DropTempPatternSql = `DROP TABLE IF EXISTS temp_pattern;`
 
 	DatasetsSql = `SELECT DISTINCT
-		d.id, 
+		d.public_id, 
 		d.name,
 		COUNT (m.id) as total
 		FROM motifs m
@@ -111,26 +111,27 @@ const (
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
-			m.dataset_id, 
+			d.public_id AS dataset_id, 
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_datasets td ON d.public_id = td.id
 			JOIN temp_queries tp ON 
-				m.id = tp.id OR	
+				m.public_id = tp.id OR	
 				m.motif_id LIKE tp.query OR
 				m.motif_name LIKE tp.query 
+			
 			UNION
 
 			-- search datasets
 			SELECT 
-			d.id AS dataset_id, 
+			d.public_id AS dataset_id, 
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_datasets td ON d.public_id = td.id
 			JOIN temp_queries tp ON 
-				d.id = tp.id OR 
+				d.public_id = tp.id OR 
 				d.name LIKE tp.query
 		) AS m
 		GROUP BY m.dataset_id;`
@@ -160,25 +161,24 @@ const (
 	// 	OFFSET :offset;`
 
 	SearchSql = `SELECT 
-		m.id, 
-		m.dataset_id,
+		m.motif_public_id, 
+		m.dataset_public_id,
 		m.motif_id, 
 		m.motif_name, 
 		m.genes 
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
-			m.id, 
-			d.id AS dataset_id,
-			d.name AS dataset,
+			m.public_id AS motif_public_id, 
+			d.public_id AS dataset_public_id,
 			m.motif_id, 
 			m.motif_name, 
 			m.genes
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_datasets td ON d.public_id = td.id
 			JOIN temp_queries tp ON 
-				m.id = tp.id OR
+				m.public_id = tp.id OR
 				m.motif_id LIKE tp.query OR 
 				m.motif_name LIKE tp.query
 
@@ -186,21 +186,20 @@ const (
 
 			-- search datasets
 			SELECT 
-			m.id, 
-			d.id AS dataset_id,
-			d.name AS dataset,
+			m.public_id AS motif_public_id, 
+			d.public_id AS dataset_public_id,
 			m.motif_id, 
-			m.motif_name, 
+			m.motif_name,
 			m.genes
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_datasets td ON d.public_id = td.id
 			JOIN temp_queries tp ON 
-				d.id = tp.id OR 
+				d.public_id = tp.id OR 
 				d.name LIKE tp.query
 			
 		) AS m
-		ORDER BY m.dataset_id, m.motif_id ASC
+		ORDER BY m.dataset_public_id, m.motif_public_id ASC
 		LIMIT :limit 
 		OFFSET :offset;`
 
@@ -289,58 +288,59 @@ const (
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
-			m.dataset_id,
+			d.public_id AS dataset_id,
 			m.id
 			FROM motifs m
-			JOIN temp_datasets td ON m.dataset_id = td.id
+			JOIN datasets d ON m.dataset_id = d.id
+			JOIN temp_datasets td ON d.public_id = td.id
 			WHERE %s
 
 			UNION
 
 			-- search datasets
 			SELECT 
-			d.id AS dataset_id,
+			d.public_id AS dataset_id,
 			m.id
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_datasets td ON d.public_id = td.id
 			WHERE %s 
 		) AS m
 		GROUP BY m.dataset_id;`
 
 	BoolSearchSql = `SELECT 
-		m.id,
-		m.dataset_id,
+		m.motif_public_id,
+		m.dataset_public_id,
 		m.motif_id, 
 		m.motif_name, 
 		m.genes 
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
-			m.id,
-			d.id AS dataset_id,
+			m.public_id AS motif_public_id,
+			d.public_id AS dataset_public_id,
 			d.name AS dataset,
 			m.motif_id, 
 			m.motif_name, 
 			m.genes
 			FROM motifs m 
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_datasets td ON d.public_id = td.id
 			WHERE %s
 
 			UNION
 
 			-- search datasets
 			SELECT 
-			m.id, 
-			d.id AS dataset_id,
+			m.public_id motif_public_id, 
+			d.public_id AS dataset_public_id,
 			d.name AS dataset,
 			m.motif_id, 
 			m.motif_name, 
 			m.genes
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
-			JOIN temp_datasets td ON d.id = td.id
+			JOIN temp_datasets td ON d.public_id = td.id
 			WHERE %s 
 		) AS m
 		ORDER BY m.dataset_id, m.motif_id ASC 
@@ -350,7 +350,8 @@ const (
 	WeightsSql = `SELECT 
 		w.position, w.a, w.c, w.g, w.t 
 		FROM weights w
-		WHERE w.motif_id = :id 
+		JOIN motifs m ON w.motif_id = m.id
+		WHERE m.public_id = :id 
 		ORDER BY w.position ASC`
 )
 
@@ -382,7 +383,7 @@ func (mdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 	for rows.Next() {
 		var dataset Dataset
 
-		err := rows.Scan(&dataset.Id, &dataset.Name, &dataset.MotifCount)
+		err := rows.Scan(&dataset.PublicId, &dataset.Name, &dataset.MotifCount)
 
 		if err != nil {
 			return nil, err
@@ -504,7 +505,7 @@ func (mdb *MotifDB) Search(queries []string,
 	for rows.Next() {
 		var dataset DatasetCount
 
-		err := rows.Scan(&dataset.Id, &dataset.MotifCount)
+		err := rows.Scan(&dataset.PublicId, &dataset.MotifCount)
 
 		if err != nil {
 			return nil, err
@@ -533,7 +534,7 @@ func (mdb *MotifDB) Search(queries []string,
 
 	defer rows.Close()
 
-	return mdb.processRows(key, tx, rows, revComp, useCache, &result)
+	return mdb.processRows(tx, rows, revComp, &result)
 }
 
 // More complex boolean search
@@ -599,7 +600,7 @@ func (mdb *MotifDB) BoolSearch(q string,
 		// }
 
 		// we use like even for exact matches to allow for case insensitivity
-		return query.AddParens("m.id LIKE "+ph+" OR m.motif_id LIKE "+ph+" OR m.motif_name LIKE "+ph, addParens)
+		return query.AddParens("m.public_id = "+ph+" OR m.motif_id LIKE "+ph+" OR m.motif_name LIKE "+ph, addParens)
 
 	})
 
@@ -614,7 +615,7 @@ func (mdb *MotifDB) BoolSearch(q string,
 		// 	return "(d.id NOT LIKE " + ph + " AND d.name NOT LIKE " + ph + ")"
 		// }
 
-		return query.AddParens("d.id LIKE "+ph+" OR d.name LIKE "+ph, addParens)
+		return query.AddParens("d.public_id = "+ph+" OR d.name LIKE "+ph, addParens)
 	})
 
 	if err != nil {
@@ -652,7 +653,7 @@ func (mdb *MotifDB) BoolSearch(q string,
 	for rows.Next() {
 		var dataset DatasetCount
 
-		err := rows.Scan(&dataset.Id, &dataset.MotifCount)
+		err := rows.Scan(&dataset.PublicId, &dataset.MotifCount)
 
 		if err != nil {
 			return nil, err
@@ -677,15 +678,15 @@ func (mdb *MotifDB) BoolSearch(q string,
 
 	defer rows.Close()
 
-	return mdb.processRows(key, tx, rows, revComp, useCache, &result)
+	return mdb.processRows(tx, rows, revComp, &result)
 }
 
 // both search methods use this to process rows and fetch weights
-func (mdb *MotifDB) processRows(key string,
+func (mdb *MotifDB) processRows(
 	tx *sql.Tx,
 	rows *sql.Rows,
 	revComp bool,
-	useCache bool,
+
 	result *MotifSearchResult) (*MotifSearchResult, error) {
 	var genes string
 	// we ignore dataset name here since we fetch it in the main query
@@ -695,12 +696,14 @@ func (mdb *MotifDB) processRows(key string,
 	for rows.Next() {
 		var motif Motif
 
-		err := rows.Scan(&motif.Id,
+		err := rows.Scan(&motif.PublicId,
 			&motif.Dataset,
 			//&datasetName,
 			&motif.MotifId,
 			&motif.MotifName,
 			&genes)
+
+		log.Debug().Msgf("processing motif: %v", motif)
 
 		if err != nil {
 			return nil, err
@@ -711,9 +714,10 @@ func (mdb *MotifDB) processRows(key string,
 		motif.Weights = make([][]float32, 0, 20)
 
 		weightRows, err := tx.Query(WeightsSql,
-			sql.Named("id", motif.Id))
+			sql.Named("id", motif.PublicId))
 
 		if err != nil {
+			log.Debug().Msgf("error querying weights for motif %s: %s", motif.PublicId, err)
 			return nil, err
 		}
 
@@ -723,14 +727,18 @@ func (mdb *MotifDB) processRows(key string,
 		var a, c, g, t float32
 
 		for weightRows.Next() {
+			log.Debug().Msgf("scanning weight row for motif %s", motif.PublicId)
 			err := weightRows.Scan(&position, &a, &c, &g, &t)
 
 			if err != nil {
+				log.Debug().Msgf("error scanning weight row for motif %s: %s", motif.PublicId, err)
 				return nil, err
 			}
 
 			motif.Weights = append(motif.Weights, []float32{a, c, g, t})
 		}
+
+		log.Debug().Msgf("scanning weight row for motif values: %v", motif.Weights)
 
 		// weight are stored as a string of floats in database
 		// which we can parse as json
@@ -748,9 +756,9 @@ func (mdb *MotifDB) processRows(key string,
 		result.Motifs = append(result.Motifs, &motif)
 	}
 
-	if useCache {
-		mdb.cache.Add(key, result)
-	}
+	// if useCache {
+	// 	mdb.cache.Add(key, result)
+	// }
 
 	return result, nil
 

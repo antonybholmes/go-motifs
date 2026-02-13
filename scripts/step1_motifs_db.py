@@ -3,10 +3,11 @@ import json
 import os
 import re
 import sqlite3
-from nanoid import generate
-import uuid_utils as uuid
-import pandas as pd
 from datetime import datetime
+
+import pandas as pd
+import uuid_utils as uuid
+from nanoid import generate
 
 files = [
     "JASPAR2022_CORE_redundant_v2.meme",
@@ -22,8 +23,14 @@ data = []
 
 datasets = {}
 
+dataset_index = 1
+sample_index = 1
+
 with open("meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
-    datasets["JASPAR2022_CORE_redundant_v2"] = str(uuid.uuid7())
+    datasets["JASPAR2022_CORE_redundant_v2"] = {
+        "id": str(uuid.uuid7()),
+        "index": len(datasets) + 1,
+    }
     for line in f:
         line = line.strip()
 
@@ -39,6 +46,7 @@ with open("meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
             db[name]["JASPAR2022_CORE_redundant_v2"].update(genes)
 
             row = {
+                "index": sample_index,
                 "dataset": "JASPAR2022_CORE_redundant_v2",
                 "id": id,
                 "name": name,
@@ -46,8 +54,10 @@ with open("meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
                 "weights": [],
             }
 
+            sample_index += 1
+
         if line.startswith("letter-probability"):
-            print("asdasdasd", row)
+
             matcher = re.search(r"w= (\d+)", line)
 
             weights = []
@@ -72,7 +82,11 @@ with open("meme/JASPAR2022_CORE_redundant_v2.meme", "r") as f:
 
 
 with open("meme/SwissRegulon_human_and_mouse.meme", "r") as f:
-    datasets["SwissRegulon_human_and_mouse"] = str(uuid.uuid7())
+    datasets["SwissRegulon_human_and_mouse"] = {
+        "id": str(uuid.uuid7()),
+        "index": len(datasets) + 1,
+    }
+
     for line in f:
         line = line.strip()
 
@@ -128,12 +142,15 @@ with open("meme/SwissRegulon_human_and_mouse.meme", "r") as f:
                     genes.add(gene)
 
             row = {
+                "index": sample_index,
                 "dataset": "SwissRegulon_human_and_mouse",
                 "id": id,
                 "name": id,
                 "genes": list(sorted(genes)),
                 "weights": [],
             }
+
+            sample_index += 1
 
         if line.startswith("letter-probability"):
             matcher = re.search(r"w= (\d+)", line)
@@ -160,7 +177,11 @@ with open("meme/SwissRegulon_human_and_mouse.meme", "r") as f:
 
 
 with open("meme/jolma2013.meme", "r") as f:
-    datasets["jolma2013"] = str(uuid.uuid7())
+    datasets["jolma2013"] = {
+        "id": str(uuid.uuid7()),
+        "index": len(datasets) + 1,
+    }
+
     for line in f:
         line = line.strip()
 
@@ -175,12 +196,15 @@ with open("meme/jolma2013.meme", "r") as f:
                 genes.add(gene)
 
             row = {
+                "index": sample_index,
                 "dataset": "jolma2013",
                 "id": id,
                 "name": id,
                 "genes": list(sorted(genes)),
                 "weights": [],
             }
+
+            sample_index += 1
 
         if line.startswith("letter-probability"):
             matcher = re.search(r"w= (\d+)", line)
@@ -207,7 +231,11 @@ with open("meme/jolma2013.meme", "r") as f:
 
 
 with open("meme/H12CORE_meme_format.meme", "r") as f:
-    datasets["H12CORE"] = str(uuid.uuid7())
+    datasets["H12CORE"] = {
+        "id": str(uuid.uuid7()),
+        "index": len(datasets) + 1,
+    }
+
     for line in f:
         line = line.strip()
         print(line)
@@ -223,12 +251,15 @@ with open("meme/H12CORE_meme_format.meme", "r") as f:
                 genes.add(gene)
 
             row = {
+                "index": sample_index,
                 "dataset": "H12CORE",
                 "id": id,
                 "name": id,
                 "genes": list(sorted(genes)),
                 "weights": [],
             }
+
+            sample_index += 1
 
         if line.startswith("letter-probability"):
             matcher = re.search(r"w= (\d+)", line)
@@ -254,7 +285,11 @@ with open("meme/H12CORE_meme_format.meme", "r") as f:
             data.append(row)
 
 with open("meme/H13CORE_meme_format.meme", "r") as f:
-    datasets["H13CORE"] = str(uuid.uuid7())
+    datasets["H13CORE"] = {
+        "id": str(uuid.uuid7()),
+        "index": len(datasets) + 1,
+    }
+
     for line in f:
         line = line.strip()
         print(line)
@@ -270,12 +305,15 @@ with open("meme/H13CORE_meme_format.meme", "r") as f:
                 genes.add(gene)
 
             row = {
+                "index": sample_index,
                 "dataset": "H13CORE",
                 "id": id,
                 "name": id,
                 "genes": list(sorted(genes)),
                 "weights": [],
             }
+
+            sample_index += 1
 
         if line.startswith("letter-probability"):
             matcher = re.search(r"w= (\d+)", line)
@@ -329,6 +367,7 @@ if os.path.exists(db):
     os.remove(db)
 
 conn = sqlite3.connect(db)
+conn.row_factory = sqlite3.Row
 cursor = conn.cursor()
 
 
@@ -341,7 +380,8 @@ cursor.execute("DROP TABLE IF EXISTS datasets;")
 cursor.execute(
     """
     CREATE TABLE datasets (
-        id TEXT PRIMARY KEY ASC,
+        id INTEGER PRIMARY KEY,
+        public_id TEXT NOT NULL,
         name TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
@@ -363,9 +403,10 @@ cursor.execute("DROP TABLE IF EXISTS motifs;")
 cursor.execute(
     """
     CREATE TABLE motifs (
-        id TEXT PRIMARY KEY ASC,
-        dataset_id TEXT NOT NULL,
-        motif_id TEXT NOT NULL, 
+        id INTEGER PRIMARY KEY,
+        public_id TEXT NOT NULL,
+        dataset_id INTEGER NOT NULL,
+        motif_id INTEGER NOT NULL, 
         motif_name TEXT NOT NULL, 
         genes TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -391,8 +432,8 @@ cursor.execute("DROP TABLE IF EXISTS weights;")
 cursor.execute(
     """
     CREATE TABLE weights (
-        id TEXT PRIMARY KEY ASC,
-        motif_id TEXT NOT NULL, 
+        id INTEGER PRIMARY KEY,
+        motif_id INTEGER NOT NULL, 
         position INTEGER NOT NULL,
         a REAL NOT NULL,
         c REAL NOT NULL,
@@ -408,12 +449,12 @@ cursor.execute("COMMIT;")
 cursor.execute("BEGIN TRANSACTION;")
 
 for name in sorted(datasets):
-    id = datasets[name]
 
     cursor.execute(
-        "INSERT INTO datasets (id, name) VALUES (?, ?);",
+        "INSERT INTO datasets (id, public_id, name) VALUES (?, ?, ?);",
         (
-            id,
+            datasets[name]["index"],
+            datasets[name]["id"],
             name,
         ),
     )
@@ -422,13 +463,13 @@ cursor.execute("COMMIT;")
 
 cursor.execute("BEGIN TRANSACTION;")
 for row in data:
-    id = str(uuid.uuid7())
 
     cursor.execute(
-        "INSERT INTO motifs (id, dataset_id, motif_id, motif_name, genes) VALUES (?, ?, ?, ?, ?);",
+        "INSERT INTO motifs (id, public_id, dataset_id, motif_id, motif_name, genes) VALUES (?, ?, ?, ?, ?, ?);",
         (
-            id,
-            datasets[row["dataset"]],
+            row["index"],
+            str(uuid.uuid7()),
+            datasets[row["dataset"]]["index"],
             row["id"],
             row["name"],
             "|".join(row["genes"]),
@@ -437,10 +478,9 @@ for row in data:
 
     for i, weight in enumerate(row["weights"]):
         cursor.execute(
-            "INSERT INTO weights (id, motif_id, position, a, c, g, t) VALUES (?, ?, ?, ?, ?, ?, ?);",
+            "INSERT INTO weights ( motif_id, position, a, c, g, t) VALUES (?, ?, ?, ?, ?, ?);",
             (
-                str(uuid.uuid7()),
-                id,
+                row["index"],
                 i + 1,
                 weight[0],
                 weight[1],
