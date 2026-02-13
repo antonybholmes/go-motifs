@@ -199,88 +199,11 @@ const (
 				d.name LIKE tp.query
 			
 		) AS m
-		ORDER BY m.dataset_public_id, m.motif_public_id ASC
+		ORDER BY 
+			m.dataset_public_id, 
+			m.motif_public_id
 		LIMIT :limit 
 		OFFSET :offset;`
-
-	// search for either exact id or partial match on
-	// either motif_id or motif_name. We limit to 100
-	// for performance reasons and it seems unlikely that
-	// a specific search will yield 100 results
-
-	// SearchNumRecordsFtsSql = `SELECT COUNT(m.id) AS total FROM (
-	// 	-- Direct match on motifs.id
-	// 	SELECT m.id
-	// 	FROM motifs m
-	// 	WHERE m.id = :id
-
-	// 	UNION
-
-	// 	-- FTS search
-	// 	SELECT m.id
-	// 	FROM motifs m
-	// 	JOIN motifs_fts ON m.rowid = motifs_fts.rowid
-	// 	WHERE motifs_fts MATCH :q
-
-	// 	-- Also allow searching by dataset
-
-	// 	UNION
-
-	// 	-- search datasets
-	// 	SELECT m.id
-	// 	FROM motifs m
-	// 	JOIN datasets d ON m.dataset_id = d.id
-	// 	WHERE d.id = :id
-
-	// 	UNION
-
-	// 	-- FTS search
-	// 	SELECT m.id
-	// 	FROM motifs m
-	// 	JOIN datasets d ON m.dataset_id = d.id
-	// 	JOIN datasets_fts ON d.rowid = datasets_fts.rowid
-	// 	WHERE datasets_fts MATCH :q
-	// ) AS m;`
-
-	// SearchFtsSql = `SELECT m.id, m.dataset, m.motif_id, m.motif_name, m.genes FROM (
-	// 		-- Direct match on motifs.id
-	// 		SELECT m.id, d.name as dataset, m.motif_id, m.motif_name, m.genes
-	// 		FROM motifs m
-	// 		JOIN datasets d ON m.dataset_id = d.id
-	// 		WHERE m.id = :id
-
-	// 		UNION
-
-	// 		-- FTS search
-	// 		SELECT m.id, d.name as dataset, m.motif_id, m.motif_name, m.genes
-	// 		FROM motifs m
-	// 		JOIN datasets d ON m.dataset_id = d.id
-	// 		JOIN motifs_fts ON m.rowid = motifs_fts.rowid
-	// 		WHERE motifs_fts MATCH :q
-
-	// 		-- Also allow searching by dataset
-
-	// 		UNION
-
-	// 		-- search datasets
-	// 		SELECT m.id, d.name as dataset, m.motif_id, m.motif_name, m.genes
-	// 		FROM motifs m
-	// 		JOIN datasets d ON m.dataset_id = d.id
-	// 		WHERE d.id = :id
-
-	// 		UNION
-
-	// 		-- FTS search
-	// 		SELECT m.id, d.name as dataset, m.motif_id, m.motif_name, m.genes
-	// 		FROM motifs m
-	// 		JOIN datasets d ON m.dataset_id = d.id
-	// 		JOIN datasets_fts ON d.rowid = datasets_fts.rowid
-	// 		WHERE datasets_fts MATCH :q
-
-	// 	) AS m
-	// 	ORDER BY m.dataset, m.motif_id ASC
-	// 	LIMIT :limit
-	// 	OFFSET :offset;`
 
 	BoolCountSql = `SELECT
 		m.dataset_id,
@@ -293,7 +216,7 @@ const (
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
-			WHERE %s
+			WHERE <<MOTIFS>>
 
 			UNION
 
@@ -304,7 +227,7 @@ const (
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
-			WHERE %s 
+			WHERE <<DATASETS>>
 		) AS m
 		GROUP BY m.dataset_id;`
 
@@ -319,14 +242,13 @@ const (
 			SELECT 
 			m.public_id AS motif_public_id,
 			d.public_id AS dataset_public_id,
-			d.name AS dataset,
 			m.motif_id, 
 			m.motif_name, 
 			m.genes
 			FROM motifs m 
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
-			WHERE %s
+			WHERE <<MOTIFS>>
 
 			UNION
 
@@ -334,25 +256,28 @@ const (
 			SELECT 
 			m.public_id motif_public_id, 
 			d.public_id AS dataset_public_id,
-			d.name AS dataset,
 			m.motif_id, 
 			m.motif_name, 
 			m.genes
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
-			WHERE %s 
+			WHERE <<DATASETS>>
 		) AS m
 		ORDER BY m.dataset_id, m.motif_id ASC 
 		LIMIT :limit 
 		OFFSET :offset;`
 
 	WeightsSql = `SELECT 
-		w.position, w.a, w.c, w.g, w.t 
+		w.position, 
+		w.a, 
+		w.c, 
+		w.g, 
+		w.t 
 		FROM weights w
 		JOIN motifs m ON w.motif_id = m.id
 		WHERE m.public_id = :id 
-		ORDER BY w.position ASC`
+		ORDER BY w.position`
 )
 
 func NewMotifDB(file string) *MotifDB {
@@ -564,7 +489,6 @@ func (mdb *MotifDB) BoolSearch(q string,
 
 	result := MotifSearchResult{Total: 0,
 		Paging: page,
-
 		Motifs: make([]*Motif, 0, 20)}
 
 	// rows, err := mdb.db.Query(SearchSql,
@@ -632,14 +556,17 @@ func (mdb *MotifDB) BoolSearch(q string,
 
 	// append query args as named parameters to match
 
-	countSql := fmt.Sprintf(BoolCountSql,
-		motifIdSql,
-		datasetIdSql)
+	// countSql := fmt.Sprintf(BoolCountSql,
+	// 	motifIdSql,
+	// 	datasetIdSql)
+
+	query := strings.Replace(BoolCountSql, "<<MOTIFS>>", motifIdSql, 1)
+	query = strings.Replace(query, "<<DATASETS>>", datasetIdSql, 1)
 
 	//log.Debug().Msgf("count sql: %s", countSql)
 	//log.Debug().Msgf("count args: %v", args)
 
-	rows, err := tx.Query(countSql, args...)
+	rows, err := tx.Query(query, args...)
 
 	// records in total
 
@@ -662,15 +589,14 @@ func (mdb *MotifDB) BoolSearch(q string,
 		result.Total += dataset.MotifCount
 	}
 
-	searchSql := fmt.Sprintf(BoolSearchSql,
-		motifIdSql,
-		datasetIdSql)
+	query = strings.Replace(BoolSearchSql, "<<MOTIFS>>", motifIdSql, 1)
+	query = strings.Replace(query, "<<DATASETS>>", datasetIdSql, 1)
 
 	//log.Debug().Msgf("search sql: %s", searchSql)
 
 	// make dynamic args list
 
-	rows, err = tx.Query(searchSql, args...)
+	rows, err = tx.Query(query, args...)
 
 	if err != nil {
 		return nil, err
