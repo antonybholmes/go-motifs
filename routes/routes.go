@@ -59,17 +59,11 @@ func ParseParamsFromPost(c *gin.Context) (*ReqParams, error) {
 }
 
 func DatasetsRoute(c *gin.Context) {
-	params, err := ParseParamsFromPost(c)
 
-	if err != nil {
-		c.Error(err)
-		return
-	}
-
-	useCache := useCacheFromString(params.UseCache)
+	// useCache := useCacheFromString(params.UseCache)
 
 	// Don't care about the errors, just plug empty list into failures
-	datasets, err := motifsdb.Datasets(useCache)
+	datasets, err := motifsdb.Datasets()
 
 	if err != nil {
 		c.Error(err)
@@ -106,7 +100,7 @@ func SearchRoute(c *gin.Context) {
 	// 	datasets.Add(ds)
 	// }
 
-	useCache := useCacheFromString(params.UseCache)
+	//useCache := useCacheFromString(params.UseCache)
 
 	var result *motifs.MotifSearchResult
 
@@ -119,7 +113,7 @@ func SearchRoute(c *gin.Context) {
 	if strings.HasPrefix(params.SearchMode, "adv") {
 		log.Debug().Msgf("bool search mode")
 
-		result, err = motifsdb.BoolSearch(q, params.Datasets, &page, false, useCache)
+		result, err = motifsdb.BoolSearch(q, params.Datasets, &page, false)
 	} else {
 		log.Debug().Msgf("bool search mode disabled")
 		queries := strings.Split(q, ",")
@@ -131,7 +125,7 @@ func SearchRoute(c *gin.Context) {
 			queriesTrimmed = append(queriesTrimmed, strings.TrimSpace(query))
 		}
 
-		result, err = motifsdb.Search(queriesTrimmed, params.Datasets, &page, false, useCache)
+		result, err = motifsdb.Search(queriesTrimmed, params.Datasets, &page, false)
 	}
 
 	if err != nil {

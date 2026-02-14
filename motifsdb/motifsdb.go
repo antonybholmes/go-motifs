@@ -25,23 +25,20 @@ func GetInstance() *motifs.MotifDB {
 	return instance
 }
 
-func Datasets(useCache bool) ([]*motifs.Dataset, error) {
-	return instance.Datasets(useCache)
+func Datasets( ) ([]*motifs.Dataset, error) {
+	return instance.Datasets( )
 }
 
 func Search(queries []string,
 	datasets []string,
 	page *motifs.Paging,
-	revComp bool,
-	useCache bool) (*motifs.MotifSearchResult, error) {
-	return instance.Search(queries, datasets, page, revComp, useCache)
+	revComp bool) (*motifs.MotifSearchResult, error) {
+	return instance.Search(queries, datasets, page, revComp)
 }
 
 func BoolSearch(q string,
 	datasets []string,
 	page *motifs.Paging,
-
-	revComp,
-	useCache bool) (*motifs.MotifSearchResult, error) {
-	return instance.BoolSearch(q, datasets, page, revComp, useCache)
+	revComp bool) (*motifs.MotifSearchResult, error) {
+	return instance.BoolSearch(q, datasets, page, revComp)
 }

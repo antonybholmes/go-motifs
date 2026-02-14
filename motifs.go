@@ -296,7 +296,7 @@ func NewMotifDB(file string) *MotifDB {
 		db: sys.Must(sql.Open(sys.Sqlite3DB, file))}
 }
 
-func (mdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
+func (mdb *MotifDB) Datasets() ([]*Dataset, error) {
 
 	// if cached, found := mdb.cache.Get("datasets"); found {
 	// 	log.Debug().Msgf("motif cache hit for datasets")
@@ -337,8 +337,7 @@ func (mdb *MotifDB) Datasets(useCache bool) ([]*Dataset, error) {
 func (mdb *MotifDB) Search(queries []string,
 	datasets []string,
 	paging *Paging,
-	revComp bool,
-	useCache bool) (*MotifSearchResult, error) {
+	revComp bool) (*MotifSearchResult, error) {
 	// clamp page number
 	paging.Page = max(paging.Page, 1)
 
@@ -472,8 +471,7 @@ func (mdb *MotifDB) Search(queries []string,
 func (mdb *MotifDB) BoolSearch(q string,
 	datasets []string,
 	paging *Paging,
-	revComp bool,
-	useCache bool) (*MotifSearchResult, error) {
+	revComp bool) (*MotifSearchResult, error) {
 
 	// clamp page number
 	paging.Page = max(paging.Page, 1) //sys.Clamp(page.Page, 1, 1000)
