@@ -14,7 +14,7 @@ func TestGenes(t *testing.T) {
 		PageSize: 100,
 	}
 
-	res, err := db.Search([]string{"ADNP_IRX_SIX_ZHX.p2"}, []string{}, &page, false, false)
+	res, err := db.Search([]string{"ADNP_IRX_SIX_ZHX.p2"}, []string{}, &page, false)
 
 	if err != nil {
 		fmt.Printf("%s", err)

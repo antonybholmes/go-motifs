@@ -7,7 +7,7 @@ replace github.com/antonybholmes/go-sys => ../go-sys
 replace github.com/antonybholmes/go-web => ../go-web
 
 require (
-	github.com/antonybholmes/go-sys v0.0.0-20260209231212-cfd21298d6eb
+	github.com/antonybholmes/go-sys v0.0.0-20260212180605-968a7a2e270d
 	github.com/gin-gonic/gin v1.11.0
 )
 
@@ -40,7 +40,6 @@ require (
 require (
 	github.com/antonybholmes/go-web v0.0.0-20251215211100-5555b69aa3c0
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/hashicorp/golang-lru/v2 v2.0.7
 	github.com/matoous/go-nanoid/v2 v2.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
