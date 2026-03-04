@@ -293,7 +293,7 @@ const (
 func NewMotifDB(file string) *MotifDB {
 	return &MotifDB{file: file,
 		//cache: expirable.NewLRU[string, any](CacheSize, nil, CacheExpiry),
-		db: sys.Must(sql.Open(sys.Sqlite3DB, file))}
+		db: sys.Must(sql.Open(sys.Sqlite3DB, file+sys.SqliteReadOnlySuffix))}
 }
 
 func (mdb *MotifDB) Datasets() ([]*Dataset, error) {
