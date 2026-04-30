@@ -305,11 +305,12 @@ func (mdb *MotifDB) Datasets() ([]*Dataset, error) {
 
 	datasets := make([]*Dataset, 0, 20)
 
-	//log.Debug().Msgf("motif %s", search)
+	log.Debug().Msgf("motif %s", mdb.file)
 
 	rows, err := mdb.db.Query(DatasetsSql)
 
 	if err != nil {
+		log.Debug().Msgf("motif datasets query error: %s", err)
 		return nil, err
 	}
 
