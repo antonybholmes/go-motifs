@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/antonybholmes/go-sys"
+	"github.com/antonybholmes/go-sys/db"
 	"github.com/antonybholmes/go-sys/log"
 	"github.com/antonybholmes/go-sys/query"
 )
@@ -25,14 +26,14 @@ type (
 	// }
 
 	Dataset struct {
-		sys.Entity
+		db.Entity
 		MotifCount int `json:"motifCount"`
 	}
 
 	Motif struct {
-		sys.Entity
-		Dataset *sys.Entity `json:"dataset"`
-		MotifId string      `json:"motifId"`
+		db.Entity
+		Dataset *db.Entity `json:"dataset"`
+		MotifId string     `json:"motifId"`
 
 		Genes   []string    `json:"genes"`
 		Weights [][]float64 `json:"weights"`
@@ -293,7 +294,7 @@ const (
 func NewMotifDB(file string) *MotifDB {
 	return &MotifDB{file: file,
 		//cache: expirable.NewLRU[string, any](CacheSize, nil, CacheExpiry),
-		db: sys.Must(sql.Open(sys.Sqlite3DB, file+sys.SqliteReadOnlySuffix))}
+		db: sys.Must(sql.Open(db.Sqlite3DB, file+db.SqliteReadOnlySuffix))}
 }
 
 func (mdb *MotifDB) Datasets() ([]*Dataset, error) {
@@ -628,7 +629,7 @@ func (mdb *MotifDB) processRows(
 
 	for rows.Next() {
 		var motif Motif
-		motif.Dataset = &sys.Entity{}
+		motif.Dataset = &db.Entity{}
 
 		err := rows.Scan(&motif.Dataset.PublicId,
 			&motif.Dataset.Name,
