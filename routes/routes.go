@@ -168,15 +168,17 @@ func MotifsToGenesRoute(c *gin.Context) {
 		return
 	}
 
+	log.Debug().Msgf("blob")
+
 	result, err := motifsdb.MotifsToGenes(params.Ids)
 
 	if err != nil {
-		log.Debug().Msgf("motif %s", err)
+		log.Debug().Msgf("gene %s", err)
 		c.Error(err)
 		return
 	}
 
-	log.Debug().Msgf("motif search result %v", result)
+	log.Debug().Msgf("gene search result %v", result)
 
 	web.MakeDataResp(c, "",
 		result)

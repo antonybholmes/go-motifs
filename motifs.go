@@ -307,6 +307,7 @@ const (
 
 	MotifsToGenes = `SELECT
 			tq.id,
+			tq.query,
 			g.public_id as public_id,
 			g.name
 		FROM genes g
@@ -733,11 +734,12 @@ func (mdb *MotifDB) processRows(
 }
 
 type MotifToGene struct {
-	Id    string
-	Genes []string
+	Id    int      `json:"-"`
+	Q     string   `json:"q"`
+	Genes []string `json:"genes"`
 }
 
-func (mdb *MotifDB) MotifsToGenes(ids []string) ([]MotifToGene, error) {
+func (mdb *MotifDB) MotifsToGenes(ids []string) ([]*MotifToGene, error) {
 
 	// rows, err := mdb.db.Query(SearchSql,
 	// 	sql.Named("id", search),
@@ -787,25 +789,28 @@ func (mdb *MotifDB) MotifsToGenes(ids []string) ([]MotifToGene, error) {
 
 	defer rows.Close()
 
-	ret := make([]MotifToGene, 0, 20)
+	ret := make([]*MotifToGene, 0, 20)
 
 	var id int
+	var query string
 	var publicId string
 	var name string
 
 	var currentGene *MotifToGene = nil
 
 	for rows.Next() {
-		var mg MotifToGene
-		err := rows.Scan(&id, &publicId, &name)
+
+		err := rows.Scan(&id, &query, &publicId, &name)
 
 		if err != nil {
 			return nil, err
 		}
 
-		if currentGene == nil || mg.Id != currentGene.Id {
-			currentGene = &MotifToGene{Id: publicId, Genes: make([]string, 0, 10)}
-			ret = append(ret, *currentGene)
+		log.Debug().Msgf("processing motif to gene: %v, id: %d, query: %s", name, id, query)
+
+		if currentGene == nil || id != currentGene.Id {
+			currentGene = &MotifToGene{Id: id, Q: query, Genes: make([]string, 0, 10)}
+			ret = append(ret, currentGene)
 		}
 
 		currentGene.Genes = append(currentGene.Genes, name)

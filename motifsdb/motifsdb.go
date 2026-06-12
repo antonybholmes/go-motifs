@@ -43,6 +43,6 @@ func BoolSearch(q string,
 	return instance.BoolSearch(q, datasets, page, revComp)
 }
 
-func MotifsToGenes(ids []string) ([]motifs.MotifToGene, error) {
+func MotifsToGenes(ids []string) ([]*motifs.MotifToGene, error) {
 	return instance.MotifsToGenes(ids)
 }
