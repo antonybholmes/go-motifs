@@ -23,6 +23,10 @@ type (
 		SearchMode string   `json:"searchMode" form:"searchMode"`
 		UseCache   string   `json:"cache" form:"cache"`
 	}
+
+	MotifsToGenesReqParams struct {
+		Ids []string `json:"ids" form:"ids"`
+	}
 )
 
 var (
@@ -31,23 +35,36 @@ var (
 
 // utility to convert cache param string to bool
 // default is true if empty
-func useCacheFromString(s string) bool {
-	if s == "" {
-		return true
-	}
+// func useCacheFromString(s string) bool {
+// 	if s == "" {
+// 		return true
+// 	}
 
-	sLower := strings.ToLower(s)
+// 	sLower := strings.ToLower(s)
 
-	if sLower == "1" || strings.HasPrefix(sLower, "t") || strings.HasPrefix(sLower, "y") {
-		return true
-	}
+// 	if sLower == "1" || strings.HasPrefix(sLower, "t") || strings.HasPrefix(sLower, "y") {
+// 		return true
+// 	}
 
-	return false
-}
+// 	return false
+// }
 
 func ParseParamsFromPost(c *gin.Context) (*ReqParams, error) {
 
 	var params ReqParams
+
+	err := web.BindQueryAndJSON(c, &params)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &params, nil
+}
+
+func ParseMotifsToGenesParamsFromPost(c *gin.Context) (*MotifsToGenesReqParams, error) {
+
+	var params MotifsToGenesReqParams
 
 	err := web.BindQueryAndJSON(c, &params)
 
@@ -104,7 +121,7 @@ func SearchRoute(c *gin.Context) {
 
 	var result *motifs.MotifSearchResult
 
-	page := motifs.Paging{
+	paging := motifs.Paging{
 		Page:     max(params.Page, 1),
 		PageSize: max(params.PageSize, motifs.MinPageSize),
 	}
@@ -113,7 +130,7 @@ func SearchRoute(c *gin.Context) {
 	if strings.HasPrefix(params.SearchMode, "adv") {
 		log.Debug().Msgf("bool search mode")
 
-		result, err = motifsdb.BoolSearch(q, params.Datasets, &page, false)
+		result, err = motifsdb.BoolSearch(q, params.Datasets, &paging, false)
 	} else {
 		log.Debug().Msgf("bool search mode disabled")
 		queries := strings.Split(q, ",")
@@ -125,8 +142,33 @@ func SearchRoute(c *gin.Context) {
 			queriesTrimmed = append(queriesTrimmed, strings.TrimSpace(query))
 		}
 
-		result, err = motifsdb.Search(queriesTrimmed, params.Datasets, &page, false)
+		result, err = motifsdb.Search(queriesTrimmed, params.Datasets, &paging, false)
 	}
+
+	if err != nil {
+		log.Debug().Msgf("motif %s", err)
+		c.Error(err)
+		return
+	}
+
+	log.Debug().Msgf("motif search result %v", result)
+
+	web.MakeDataResp(c, "",
+		result)
+
+	//web.MakeDataResp(c, "", mutationdbcache.GetInstance().List())
+}
+
+func MotifsToGenesRoute(c *gin.Context) {
+
+	params, err := ParseMotifsToGenesParamsFromPost(c)
+
+	if err != nil {
+		c.Error(err)
+		return
+	}
+
+	result, err := motifsdb.MotifsToGenes(params.Ids)
 
 	if err != nil {
 		log.Debug().Msgf("motif %s", err)

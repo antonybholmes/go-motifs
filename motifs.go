@@ -68,12 +68,13 @@ const (
 	// 	ORDER BY motifs.dataset`
 
 	TempQueriesTableSql = `CREATE TEMP TABLE IF NOT EXISTS temp_queries (
-		id TEXT PRIMARY KEY,
+		id INTEGER PRIMARY KEY,
 		query TEXT,
-		UNIQUE(id, query)
+		search TEXT,
+		UNIQUE(query, search)
 	);`
 
-	InsertTempQueriesSql = `INSERT INTO temp_queries (id, query) VALUES (:id, :query) ON CONFLICT DO NOTHING;`
+	InsertTempQueriesSql = `INSERT INTO temp_queries (query, search) VALUES (:query, :search) ON CONFLICT DO NOTHING;`
 
 	TempDatasetTableSql = `CREATE TEMP TABLE IF NOT EXISTS temp_datasets (id TEXT PRIMARY KEY);`
 
@@ -88,6 +89,12 @@ const (
 		FROM motifs m
 		JOIN datasets d ON m.dataset_id = d.id
 		GROUP BY d.id
+		ORDER BY d.name ASC`
+
+	DatasetIdsSql = `SELECT 
+		d.public_id, 
+		d.name
+		FROM datasets d
 		ORDER BY d.name ASC`
 
 	// SearchNumRecordsSql = `SELECT COUNT(m.id) AS total FROM (
@@ -118,10 +125,10 @@ const (
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
-			JOIN temp_queries tp ON 
-				m.public_id = tp.id OR	
-				m.motif_id LIKE tp.query OR
-				m.motif_name LIKE tp.query 
+			JOIN temp_queries tq ON 
+				m.public_id = tq.query OR	
+				m.motif_id LIKE tq.search OR
+				m.motif_name LIKE tq.search 
 			
 			UNION
 
@@ -133,9 +140,9 @@ const (
 			FROM motifs m
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
-			JOIN temp_queries tp ON 
-				d.public_id = tp.id OR 
-				d.name LIKE tp.query
+			JOIN temp_queries tq ON 
+				d.public_id = tq.query OR 
+				d.name LIKE tq.search
 		) AS m
 		GROUP BY m.dataset_public_id;`
 
@@ -163,13 +170,13 @@ const (
 	// 	LIMIT :limit
 	// 	OFFSET :offset;`
 
-	SearchSql = `SELECT 
+	SearchSql = `SELECT DISTINCT
 		m.dataset_public_id,
 		m.dataset_name,
 		m.motif_public_id,
 		m.motif_id, 
 		m.motif_name, 
-		m.genes 
+		gene
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
@@ -178,14 +185,16 @@ const (
 			m.public_id AS motif_public_id, 
 			m.motif_id, 
 			m.motif_name, 
-			m.genes
+			g.name AS gene
 			FROM motifs m
+			JOIN motif_genes mg ON m.id = mg.motif_id
+			JOIN genes g ON mg.gene_id = g.id
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
-			JOIN temp_queries tp ON 
-				m.public_id = tp.id OR
-				m.motif_id LIKE tp.query OR 
-				m.motif_name LIKE tp.query
+			JOIN temp_queries tq ON 
+				m.public_id = tq.query OR
+				m.motif_id LIKE tq.search OR 
+				m.motif_name LIKE tq.search
 
 			UNION
 
@@ -196,13 +205,15 @@ const (
 			m.public_id AS motif_public_id, 
 			m.motif_id, 
 			m.motif_name,
-			m.genes
+			g.name as gene
 			FROM motifs m
+			JOIN motif_genes mg ON m.id = mg.motif_id
+			JOIN genes g ON mg.gene_id = g.id
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
-			JOIN temp_queries tp ON 
-				d.public_id = tp.id OR 
-				d.name LIKE tp.query
+			JOIN temp_queries tq ON 
+				d.public_id = tq.query OR 
+				d.name LIKE tq.search
 			
 		) AS m
 		ORDER BY 
@@ -211,7 +222,7 @@ const (
 		LIMIT :limit 
 		OFFSET :offset;`
 
-	BoolCountSql = `SELECT
+	BoolCountSql = `SELECT DISTINCT
 		m.public_dataset_id,
 		COUNT(m.id) AS total 
 		FROM (
@@ -238,13 +249,13 @@ const (
 		) AS m
 		GROUP BY m.public_dataset_id;`
 
-	BoolSearchSql = `SELECT 
+	BoolSearchSql = `SELECT DISTINCT
 		m.dataset_public_id,
 		m.dataset_name,
 		m.motif_public_id,
 		m.motif_id, 
 		m.motif_name, 
-		m.genes 
+		gene
 		FROM (
 			-- Direct match on motifs.id
 			SELECT 
@@ -253,8 +264,10 @@ const (
 			m.public_id AS motif_public_id,
 			m.motif_id, 
 			m.motif_name, 
-			m.genes
-			FROM motifs m 
+			g.name as gene
+			FROM motifs m
+			JOIN motif_genes mg ON m.id = mg.motif_id
+			JOIN genes g ON mg.gene_id = g.id
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
 			WHERE <<MOTIFS>>
@@ -268,8 +281,10 @@ const (
 			m.public_id motif_public_id, 
 			m.motif_id, 
 			m.motif_name, 
-			m.genes
+			g.name as gene
 			FROM motifs m
+			JOIN motif_genes mg ON m.id = mg.motif_id
+			JOIN genes g ON mg.gene_id = g.id
 			JOIN datasets d ON m.dataset_id = d.id
 			JOIN temp_datasets td ON d.public_id = td.id
 			WHERE <<DATASETS>>
@@ -280,15 +295,29 @@ const (
 		LIMIT :limit 
 		OFFSET :offset;`
 
-	WeightsSql = `SELECT 
-		w.a, 
-		w.c, 
-		w.g, 
-		w.t 
+	WeightsSql = `SELECT
+		w.a,
+		w.c,
+		w.g,
+		w.t
 		FROM weights w
 		JOIN motifs m ON w.motif_id = m.id
-		WHERE m.public_id = :id 
+		WHERE m.public_id = :id
 		ORDER BY w.id`
+
+	MotifsToGenes = `SELECT
+			tq.id,
+			g.public_id as public_id,
+			g.name
+		FROM genes g
+		JOIN motif_genes mg ON g.id = mg.gene_id
+		JOIN motifs m ON mg.motif_id = m.id
+		JOIN temp_queries tq ON 
+			m.public_id = tq.query OR
+			m.motif_id LIKE tq.search OR 
+			m.motif_name LIKE tq.search
+		ORDER BY 
+			tq.id, g.name`
 )
 
 func NewMotifDB(file string) *MotifDB {
@@ -328,10 +357,6 @@ func (mdb *MotifDB) Datasets() ([]*Dataset, error) {
 
 		datasets = append(datasets, &dataset)
 	}
-
-	// if useCache {
-	// 	mdb.cache.Add("datasets", datasets)
-	// }
 
 	return datasets, nil
 }
@@ -382,6 +407,7 @@ func (mdb *MotifDB) Search(queries []string,
 	_, err = tx.Exec(TempQueriesTableSql)
 
 	if err != nil {
+		log.Debug().Msgf("motif create temp %s", err)
 		return nil, err
 	}
 
@@ -392,8 +418,8 @@ func (mdb *MotifDB) Search(queries []string,
 	}
 
 	for _, q := range queries {
-		_, err := stmt.Exec(sql.Named("id", q),
-			sql.Named("query", q+"%"))
+		_, err := stmt.Exec(sql.Named("query", q),
+			sql.Named("search", q+"%"))
 
 		if err != nil {
 			log.Debug().Msgf("motif insert temp %s", err)
@@ -622,10 +648,12 @@ func (mdb *MotifDB) processRows(
 	rows *sql.Rows,
 	revComp bool,
 	result *MotifSearchResult) (*MotifSearchResult, error) {
-	var genes string
+	var gene string
 	// we ignore dataset name here since we fetch it in the main query
 	// but it is part of the query for sorting
 	//var datasetName string
+
+	var currentMotif *Motif = nil
 
 	for rows.Next() {
 		var motif Motif
@@ -636,7 +664,7 @@ func (mdb *MotifDB) processRows(
 			&motif.PublicId,
 			&motif.MotifId,
 			&motif.Name,
-			&genes)
+			&gene)
 
 		log.Debug().Msgf("processing motif: %v", motif)
 
@@ -644,48 +672,56 @@ func (mdb *MotifDB) processRows(
 			return nil, err
 		}
 
-		motif.Genes = strings.Split(genes, "|")
+		if currentMotif == nil || motif.PublicId != currentMotif.PublicId {
+			// new motif, create a new Motif object
+			currentMotif = &motif
+			currentMotif.Genes = make([]string, 0, 10)
+			currentMotif.Weights = make([][]float64, 0, 20)
 
-		motif.Weights = make([][]float64, 0, 20)
-
-		weightRows, err := tx.Query(WeightsSql,
-			sql.Named("id", motif.PublicId))
-
-		if err != nil {
-			return nil, err
-		}
-
-		defer weightRows.Close()
-
-		var a, c, g, t float64
-
-		for weightRows.Next() {
-			err := weightRows.Scan(&a, &c, &g, &t)
+			// Add the motifs weights
+			weightRows, err := tx.Query(WeightsSql,
+				sql.Named("id", currentMotif.PublicId))
 
 			if err != nil {
 				return nil, err
 			}
 
-			motif.Weights = append(motif.Weights, []float64{a, c, g, t})
-		}
+			defer weightRows.Close()
 
-		// weight are stored as a string of floats in database
-		// which we can parse as json
-		//json.Unmarshal([]byte(weights), &motif.Weights)
+			var a, c, g, t float64
 
-		// reverse position order
-		if revComp {
-			// reverse order of weights
-			slices.Reverse(motif.Weights)
+			for weightRows.Next() {
+				err := weightRows.Scan(&a, &c, &g, &t)
 
-			// reverse order of values in each position
-			// to complement so A becomes T and C becomes G
-			for _, pw := range motif.Weights {
-				slices.Reverse(pw)
+				if err != nil {
+					return nil, err
+				}
+
+				currentMotif.Weights = append(currentMotif.Weights, []float64{a, c, g, t})
 			}
+
+			// weight are stored as a string of floats in database
+			// which we can parse as json
+			//json.Unmarshal([]byte(weights), &motif.Weights)
+
+			// reverse position order
+			if revComp {
+				// reverse order of weights
+				slices.Reverse(currentMotif.Weights)
+
+				// reverse order of values in each position
+				// to complement so A becomes T and C becomes G
+				for _, pw := range currentMotif.Weights {
+					slices.Reverse(pw)
+				}
+			}
+
+			result.Motifs = append(result.Motifs, currentMotif)
 		}
 
-		result.Motifs = append(result.Motifs, &motif)
+		// Add the genes
+		currentMotif.Genes = append(currentMotif.Genes, gene)
+
 	}
 
 	// if useCache {
@@ -694,6 +730,90 @@ func (mdb *MotifDB) processRows(
 
 	return result, nil
 
+}
+
+type MotifToGene struct {
+	Id    string
+	Genes []string
+}
+
+func (mdb *MotifDB) MotifsToGenes(ids []string) ([]MotifToGene, error) {
+
+	// rows, err := mdb.db.Query(SearchSql,
+	// 	sql.Named("id", search),
+	// 	sql.Named("q", fmt.Sprintf("%%%s%%", search)))
+
+	tx, err := mdb.db.Begin()
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer tx.Rollback()
+
+	log.Debug().Msgf("creating temp table")
+
+	_, err = tx.Exec(TempQueriesTableSql)
+
+	if err != nil {
+		return nil, err
+	}
+
+	stmt, err := tx.Prepare(InsertTempQueriesSql)
+
+	if err != nil {
+		return nil, err
+	}
+
+	for _, q := range ids {
+		_, err := stmt.Exec(sql.Named("query", q),
+			sql.Named("search", q+"%"))
+
+		log.Debug().Msgf("motif insert temp %s", q)
+
+		if err != nil {
+			log.Debug().Msgf("motif insert temp %s", err)
+			return nil, err
+		}
+	}
+
+	stmt.Close()
+
+	rows, err := tx.Query(MotifsToGenes)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	ret := make([]MotifToGene, 0, 20)
+
+	var id int
+	var publicId string
+	var name string
+
+	var currentGene *MotifToGene = nil
+
+	for rows.Next() {
+		var mg MotifToGene
+		err := rows.Scan(&id, &publicId, &name)
+
+		if err != nil {
+			return nil, err
+		}
+
+		if currentGene == nil || mg.Id != currentGene.Id {
+			currentGene = &MotifToGene{Id: publicId, Genes: make([]string, 0, 10)}
+			ret = append(ret, *currentGene)
+		}
+
+		currentGene.Genes = append(currentGene.Genes, name)
+
+	}
+
+	return ret, nil
+	//return mdb.processRows(tx, rows, revComp, &result)
 }
 
 func addTempDatasets(tx *sql.Tx, datasets []string) error {

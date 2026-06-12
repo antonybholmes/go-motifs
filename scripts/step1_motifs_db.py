@@ -358,10 +358,9 @@ with open("meme/H13CORE_meme_format.meme", "r") as f:
 # with open("motif_to_gene.json", "w") as f:
 #    json.dump(jdata, f, indent=2)
 
-# get date as y-mm-dd
-date = datetime.now().strftime("%Y-%m-%d")
+# get date as yyyymmdd
 
-db = os.path.join(dir, f"motifs-{date}.db")
+db = os.path.join(dir, f"motifs-20260612.db")
 
 if os.path.exists(db):
     os.remove(db)
@@ -377,65 +376,74 @@ cursor.execute("PRAGMA foreign_keys = ON;")
 cursor.execute("BEGIN TRANSACTION;")
 
 cursor.execute("DROP TABLE IF EXISTS datasets;")
-cursor.execute(
-    """
+cursor.execute("""
     CREATE TABLE datasets (
         id INTEGER PRIMARY KEY,
         public_id TEXT NOT NULL,
         name TEXT NOT NULL);
-"""
-)
+""")
 
 cursor.execute("CREATE INDEX idx_datasets_name ON datasets (LOWER(name));")
 
 
-cursor.execute("DROP TABLE IF EXISTS datasets_fts;")
-cursor.execute(
-    """
-    CREATE VIRTUAL TABLE datasets_fts USING fts5(
-        name,
-        content='datasets',
-        content_rowid='rowid'
-    );
-"""
-)
+# cursor.execute("DROP TABLE IF EXISTS datasets_fts;")
+# cursor.execute("""
+#     CREATE VIRTUAL TABLE datasets_fts USING fts5(
+#         name,
+#         content='datasets',
+#         content_rowid='rowid'
+#     );
+# """)
+
+cursor.execute("DROP TABLE IF EXISTS genes;")
+cursor.execute("""
+    CREATE TABLE genes (
+        id INTEGER PRIMARY KEY,
+        public_id TEXT NOT NULL,
+        name TEXT NOT NULL UNIQUE);
+""")
+
+cursor.execute("CREATE INDEX idx_genes_public_id ON genes (public_id);")
+cursor.execute("CREATE INDEX idx_genes_name ON genes (LOWER(name));")
+
 
 cursor.execute("DROP TABLE IF EXISTS motifs;")
-cursor.execute(
-    """
+cursor.execute("""
     CREATE TABLE motifs (
         id INTEGER PRIMARY KEY,
         public_id TEXT NOT NULL,
         dataset_id INTEGER NOT NULL,
         motif_id TEXT NOT NULL, 
         motif_name TEXT NOT NULL, 
-        genes TEXT NOT NULL,
         length INTEGER NOT NULL,
         UNIQUE (dataset_id, motif_id),
         FOREIGN KEY (dataset_id) REFERENCES datasets(id) ON DELETE CASCADE);
-"""
-)
+""")
 
 cursor.execute("CREATE INDEX idx_motifs_motif_id ON motifs (LOWER(motif_id));")
 cursor.execute("CREATE INDEX idx_motifs_name ON motifs (LOWER(motif_name));")
 cursor.execute("CREATE INDEX idx_motifs_dataset_id ON motifs (dataset_id);")
 
+cursor.execute("""
+     CREATE TABLE motif_genes (motif_id INTEGER NOT NULL,  
+     gene_id INTEGER NOT NULL, 
+     PRIMARY KEY (motif_id, gene_id), 
+     FOREIGN KEY (motif_id) REFERENCES motifs(id) ON DELETE CASCADE, 
+     FOREIGN KEY (gene_id) REFERENCES genes(id) ON DELETE CASCADE);""")
 
-cursor.execute("DROP TABLE IF EXISTS motifs_fts;")
-cursor.execute(
-    """
-    CREATE VIRTUAL TABLE motifs_fts USING fts5(
-        motif_id,
-        motif_name,
-        content='motifs',
-        content_rowid='rowid'
-    );
-"""
-)
+
+# cursor.execute("DROP TABLE IF EXISTS motifs_fts;")
+# cursor.execute("""
+#     CREATE VIRTUAL TABLE motifs_fts USING fts5(
+#         motif_id,
+#         motif_name,
+#         content='motifs',
+#         content_rowid='rowid'
+#     );
+# """)
 
 cursor.execute("DROP TABLE IF EXISTS weights;")
-cursor.execute(
-    """
+cursor.execute("""
     CREATE TABLE weights (
         id INTEGER PRIMARY KEY,
         motif_id INTEGER NOT NULL,
@@ -445,8 +453,7 @@ cursor.execute(
         g REAL NOT NULL,
         t REAL NOT NULL,
         FOREIGN KEY (motif_id) REFERENCES motifs(id) ON DELETE CASCADE);
-"""
-)
+""")
 cursor.execute("CREATE INDEX idx_weights_motif_id ON weights (motif_id);")
 
 for name in sorted(datasets):
@@ -460,21 +467,41 @@ for name in sorted(datasets):
         ),
     )
 
+gene_map = {}
 
 for row in data:
 
     cursor.execute(
-        "INSERT INTO motifs (id, public_id, dataset_id, motif_id, motif_name, genes, length) VALUES (?, ?, ?, ?, ?, ?, ?);",
+        "INSERT INTO motifs (id, public_id, dataset_id, motif_id, motif_name,  length) VALUES (?, ?, ?, ?, ?, ?);",
         (
             row["index"],
             str(uuid.uuid7()),
             datasets[row["dataset"]]["index"],
             row["id"],
             row["name"],
-            "|".join(row["genes"]),
             len(row["weights"]),
         ),
     )
+
+    for gene in row["genes"]:
+        if gene not in gene_map:
+            gene_map[gene] = len(gene_map) + 1
+            cursor.execute(
+                "INSERT INTO genes (id, public_id, name) VALUES (?, ?, ?);",
+                (
+                    gene_map[gene],
+                    str(uuid.uuid7()),
+                    gene,
+                ),
+            )
+
+        cursor.execute(
+            "INSERT INTO motif_genes (motif_id, gene_id) VALUES (?, ?);",
+            (
+                row["index"],
+                gene_map[gene],
+            ),
+        )
 
     for i, weight in enumerate(row["weights"]):
         cursor.execute(
@@ -490,8 +517,8 @@ for row in data:
         )
 
 
-cursor.execute("INSERT INTO datasets_fts(datasets_fts) VALUES ('rebuild');")
-cursor.execute("INSERT INTO motifs_fts(motifs_fts) VALUES ('rebuild');")
+# cursor.execute("INSERT INTO datasets_fts(datasets_fts) VALUES ('rebuild');")
+# cursor.execute("INSERT INTO motifs_fts(motifs_fts) VALUES ('rebuild');")
 
 cursor.execute("COMMIT;")
 

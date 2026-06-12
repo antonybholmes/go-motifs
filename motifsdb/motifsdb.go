@@ -25,8 +25,8 @@ func GetInstance() *motifs.MotifDB {
 	return instance
 }
 
-func Datasets( ) ([]*motifs.Dataset, error) {
-	return instance.Datasets( )
+func Datasets() ([]*motifs.Dataset, error) {
+	return instance.Datasets()
 }
 
 func Search(queries []string,
@@ -41,4 +41,8 @@ func BoolSearch(q string,
 	page *motifs.Paging,
 	revComp bool) (*motifs.MotifSearchResult, error) {
 	return instance.BoolSearch(q, datasets, page, revComp)
+}
+
+func MotifsToGenes(ids []string) ([]motifs.MotifToGene, error) {
+	return instance.MotifsToGenes(ids)
 }
