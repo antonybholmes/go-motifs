@@ -734,9 +734,9 @@ func (mdb *MotifDB) processRows(
 }
 
 type MotifToGene struct {
-	Id    int      `json:"-"`
 	Q     string   `json:"q"`
 	Genes []string `json:"genes"`
+	Id    int      `json:"-"`
 }
 
 func (mdb *MotifDB) MotifsToGenes(ids []string) ([]*MotifToGene, error) {
