@@ -60,7 +60,7 @@ const (
 
 	MinSearchLen = 3
 	MinPageSize  = 10
-	MaxPageSize  = 100
+	MaxRecords   = 100
 
 	// DatasetsSql = `SELECT DISTINCT
 	// 	motifs.dataset
@@ -370,7 +370,7 @@ func (mdb *MotifDB) Search(queries []string,
 	paging.Page = max(paging.Page, 1)
 
 	// clamp page size
-	paging.PageSize = min(max(paging.PageSize, MinPageSize), MaxPageSize)
+	paging.PageSize = min(max(paging.PageSize, MinPageSize), MaxRecords)
 
 	// key := fmt.Sprintf("q:%s:d:%s:p:%d:ps:%d:rev:%t",
 	// 	strings.Join(queries, ","),
@@ -506,7 +506,7 @@ func (mdb *MotifDB) BoolSearch(q string,
 	paging.Page = max(paging.Page, 1) //sys.Clamp(page.Page, 1, 1000)
 
 	// clamp page size
-	paging.PageSize = sys.Clamp(paging.PageSize, MinPageSize, MaxPageSize)
+	paging.PageSize = sys.Clamp(paging.PageSize, MinPageSize, MaxRecords)
 
 	// key := fmt.Sprintf("q:%s:d:%s:p:%d:ps:%d:rev:%t:mode:bool",
 	// 	q,

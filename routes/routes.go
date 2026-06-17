@@ -168,9 +168,10 @@ func MotifsToGenesRoute(c *gin.Context) {
 		return
 	}
 
-	log.Debug().Msgf("blob")
+	// limit the number of IDs to the maximum allowed records
+	ids := params.Ids[0:min(len(params.Ids), motifs.MaxRecords)]
 
-	result, err := motifsdb.MotifsToGenes(params.Ids)
+	result, err := motifsdb.MotifsToGenes(ids)
 
 	if err != nil {
 		log.Debug().Msgf("gene %s", err)
