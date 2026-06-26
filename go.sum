@@ -1,3 +1,7 @@
+github.com/antonybholmes/go-sys v0.0.0-20260616152946-01b9b0d3a79b h1:7q4rq8L59+jljUQ01zJ+oq+7pVm2CoOG8u0KtO3axPs=
+github.com/antonybholmes/go-sys v0.0.0-20260616152946-01b9b0d3a79b/go.mod h1:r0W8J4WwCbwfKZfPDXKrYNwj1LfaUSbLIo7BAf0cl2g=
+github.com/antonybholmes/go-web v0.0.0-20251215211100-5555b69aa3c0 h1:PBEsqwl+UKTMAEH2yh1bYW8K6hN5lvZtTuI3Y+rywwQ=
+github.com/antonybholmes/go-web v0.0.0-20251215211100-5555b69aa3c0/go.mod h1:RTrd//FJsk22RhRvJT6jEDlzBGWE0l/y0q/BbskfQSo=
 github.com/bytedance/gopkg v0.1.4 h1:oZnQwnX82KAIWb7033bEwtxvTqXcYMxDBaQxo5JJHWM=
 github.com/bytedance/gopkg v0.1.4/go.mod h1:v1zWfPm21Fb+OsyXN2VAHdL6TBb2L88anLQgdyje6R4=
 github.com/bytedance/sonic v1.15.2 h1:90H+rcF/FwLXwfB1cudOLq/je83n683Utf4Cbp0xHCo=
