@@ -80,7 +80,7 @@ func DatasetsRoute(c *gin.Context) {
 	// useCache := useCacheFromString(params.UseCache)
 
 	// Don't care about the errors, just plug empty list into failures
-	datasets, err := motifsdb.Datasets()
+	datasets, err := motifsdb.Instance().Datasets()
 
 	if err != nil {
 		c.Error(err)
@@ -130,7 +130,7 @@ func SearchRoute(c *gin.Context) {
 	if strings.HasPrefix(params.SearchMode, "adv") {
 		log.Debug().Msgf("bool search mode")
 
-		result, err = motifsdb.BoolSearch(q, params.Datasets, &paging, false)
+		result, err = motifsdb.Instance().BoolSearch(q, params.Datasets, &paging, false)
 	} else {
 		log.Debug().Msgf("bool search mode disabled")
 		queries := strings.Split(q, ",")
@@ -142,7 +142,7 @@ func SearchRoute(c *gin.Context) {
 			queriesTrimmed = append(queriesTrimmed, strings.TrimSpace(query))
 		}
 
-		result, err = motifsdb.Search(queriesTrimmed, params.Datasets, &paging, false)
+		result, err = motifsdb.Instance().Search(queriesTrimmed, params.Datasets, &paging, false)
 	}
 
 	if err != nil {
@@ -171,7 +171,7 @@ func MotifsToGenesRoute(c *gin.Context) {
 	// limit the number of IDs to the maximum allowed records
 	ids := params.Ids[0:min(len(params.Ids), motifs.MaxRecords)]
 
-	result, err := motifsdb.MotifsToGenes(ids)
+	result, err := motifsdb.Instance().MotifsToGenes(ids)
 
 	if err != nil {
 		log.Debug().Msgf("gene %s", err)
