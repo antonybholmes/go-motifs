@@ -7,7 +7,7 @@ replace github.com/antonybholmes/go-sys => ../go-sys
 replace github.com/antonybholmes/go-web => ../go-web
 
 require (
-	github.com/antonybholmes/go-sys v0.0.0-20261110151334-69bf4fef33df
+	github.com/antonybholmes/go-sys v0.0.0-20261112231824-277e38ba69f2
 	github.com/antonybholmes/go-web v0.0.0-20251215211100-5555b69aa3c0
 	github.com/gin-gonic/gin v1.12.0
 )
